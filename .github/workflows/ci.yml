@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, scaffold]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Ensure Remotion browser
+        run: npx remotion browser ensure
+
+      - name: Render FontCheck still
+        run: npx remotion still FontCheck out/fontcheck.png --frame=0
+
+      - name: Upload FontCheck artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fontcheck
+          path: out/fontcheck.png
+          if-no-files-found: error

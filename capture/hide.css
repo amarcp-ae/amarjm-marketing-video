@@ -1,0 +1,9 @@
+/* Hide UI chrome that should not appear in marketing screenshots. */
+[data-testid='cookie-banner'],
+.cookie-consent,
+#chat-widget,
+.intercom-lightweight-app,
+[aria-label='Close announcement'] {
+  display: none !important;
+  visibility: hidden !important;
+}

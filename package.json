@@ -1,0 +1,43 @@
+{
+  "name": "amarjm-marketing-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AmarJM marketing video-as-code (Remotion)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "capture": "tsx capture/capture.ts",
+    "audio": "tsx audio/fetch-audio.ts",
+    "preview": "remotion studio",
+    "render:master": "remotion render Master out/master.mp4",
+    "render:vertical": "remotion render Vertical out/vertical.mp4",
+    "render:square": "remotion render Square out/square.mp4",
+    "lint": "eslint . --ext .ts,.tsx && prettier --check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/captions": "4.0.522",
+    "@remotion/cli": "4.0.522",
+    "@remotion/media-utils": "4.0.522",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.522"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "playwright": "1.63.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
