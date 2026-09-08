@@ -1,0 +1,9 @@
+node_modules
+out
+package-lock.json
+assets/screens
+assets/video
+assets/audio
+*.mp4
+*.png
+!assets/fonts/**
