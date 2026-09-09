@@ -60,6 +60,8 @@ npx remotion still FontCheck out/fontcheck.png
 
 Renders: `نظامٌ واحد لتجارة الذهب كلّها` with local IBM Plex Sans Arabic (`.woff2` in `assets/fonts/`).
 
+**Shaping check (out/fontcheck.png):** Tanween ḍammah on نظامٌ is visible above the final mīm; shadda on كلّها is visible above lām. Joining forms and RTL layout look correct with the local `@font-face` load.
+
 ## Lint / types
 
 ```bash
