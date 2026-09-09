@@ -1,4 +1,63 @@
-/* Hide UI chrome that should not appear in marketing screenshots. */
+/**
+ * Injected before every marketing shot.
+ * Strips avatar/email chrome, Help, update banners, and toasts.
+ * Elements whose text matches /@amarcp\.ae/ are also hidden via JS in capture.ts.
+ */
+
+/* Navbar user avatar / email / dropdown trigger */
+.navbar .nav-item.dropdown-navbar-user,
+.navbar .dropdown-navbar-user,
+.navbar .avatar,
+.navbar .avatar-frame,
+.navbar .standard-image,
+.navbar [data-goto='user'],
+header .navbar .nav-link img.avatar,
+.nav-profiles,
+#toolbar-user-menu,
+.toolbar-user-fullname {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Help menu */
+.dropdown-help,
+.navbar .btn-help,
+.navbar [data-goto='help'],
+.nav-item.dropdown-help,
+a[href*='/app/help'],
+.help-dropdown,
+#toolbar-help {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Update / version banners */
+.update-notification,
+.version-update,
+.app-update-banner,
+.navbar .indicator.update,
+[data-update-available],
+.frappe-update-banner {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Toasts / flash messages */
+.toast-container,
+.toast,
+.alert,
+.msgprint,
+.msgprint-dialog,
+.frappe-toast,
+div[id^='alert-container'],
+.desk-alert {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Cookie / chat chrome (keep from scaffold) */
 [data-testid='cookie-banner'],
 .cookie-consent,
 #chat-widget,
