@@ -1107,12 +1107,15 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
     const qty = detail.locator('input[data-fieldname="qty"]');
     if ((await qty.count()) > 0) {
       const cur = await qty.first().inputValue().catch(() => '');
+      // Product finding: report whether scan pre-fills piece weight from the item.
       if (!cur || Number(cur) === 0) {
-        // Item master default weight for this barcode piece is 32.4 g.
+        console.log('S07 qty as scanned (before any fill)', cur, '→ typed 32.4');
         await qty.first().click({force: true});
         await qty.first().fill('32.4');
         await qty.first().press('Tab');
         await page.waitForTimeout(1_000);
+      } else {
+        console.log('S07 qty as scanned (before any fill)', cur, '→ prefilled');
       }
     }
     const addBtn = page.locator(
