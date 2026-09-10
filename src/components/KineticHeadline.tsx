@@ -109,7 +109,7 @@ export const KineticHeadline: React.FC<KineticHeadlineProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: 24,
+              left: 140,
               bottom: 24,
               background: 'rgba(0,0,0,0.75)',
               color: '#7CFF7C',

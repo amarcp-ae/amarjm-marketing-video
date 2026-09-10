@@ -66,7 +66,7 @@ export const S01: React.FC = () => {
           <div style={{fontSize: 28, opacity: 0.85}}>{line.subtitle}</div>
         </div>
 
-        <LogoWordmark size={128} sweepAt={36} />
+        <LogoWordmark size={128} markWidth={320} sweepAt={36} />
 
         <div
           dir="rtl"
@@ -90,7 +90,7 @@ export const S01: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              left: 28,
+              left: 140,
               bottom: 28,
               background: 'rgba(0,0,0,0.78)',
               color: '#7CFF7C',

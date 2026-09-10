@@ -47,7 +47,7 @@ export const S13: React.FC = () => {
           fontFamily: brand.fontFamily,
         }}
       >
-        <LogoWordmark size={110} sweepAt={18} />
+        <LogoWordmark size={110} markWidth={320} sweepAt={18} />
         <div
           style={{
             marginTop: 36,

@@ -1,10 +1,12 @@
 import React from 'react';
 import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
+import {CornerWatermark} from './CornerWatermark';
 import {ObsidianPlate} from './ObsidianPlate';
 import {SceneCaptions} from './SceneCaptions';
 
 const TRANSITION_SEC = 0.35;
 const PUSH_PX = 20;
+const NO_CORNER_MARK = new Set(['S01', 'S13']);
 
 type SceneShellProps = {
   sceneId: string;
@@ -15,7 +17,8 @@ type SceneShellProps = {
 };
 
 /**
- * Shared scene chrome: obsidian plate, captions, and 350ms / 20px push dissolve edges.
+ * Shared scene chrome: obsidian plate, captions, corner watermark, and dissolve edges.
+ * Corner mark is omitted on S01 / S13 (hero mark lives in the wordmark instead).
  */
 export const SceneShell: React.FC<SceneShellProps> = ({
   sceneId,
@@ -27,6 +30,7 @@ export const SceneShell: React.FC<SceneShellProps> = ({
   const frame = useCurrentFrame();
   const {fps, durationInFrames} = useVideoConfig();
   const t = Math.round(TRANSITION_SEC * fps);
+  const showCorner = !NO_CORNER_MARK.has(sceneId);
 
   const opacity = interpolate(
     frame,
@@ -45,6 +49,7 @@ export const SceneShell: React.FC<SceneShellProps> = ({
     <AbsoluteFill style={{opacity, transform: `translateX(${x}px)`}}>
       <ObsidianPlate showHairline={showHairline} />
       {children}
+      {showCorner ? <CornerWatermark /> : null}
       <SceneCaptions sceneId={sceneId} />
     </AbsoluteFill>
   );
