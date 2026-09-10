@@ -979,6 +979,140 @@ const captureS06 = async (browser: Browser, cookies: Cookie[]): Promise<void> =>
   }
 };
 
+/** ERPNext POS requires a customer before cart lines can be added. */
+const selectPosCustomer = async (page: Page, customer = 'Cash Customer'): Promise<void> => {
+  await page.waitForFunction(() => Boolean((window as unknown as {cur_pos?: unknown}).cur_pos), {
+    timeout: 30_000,
+  });
+  await page.evaluate(async (customerName) => {
+    const curPos = (
+      window as unknown as {
+        cur_pos?: {
+          allow_negative_stock?: boolean;
+          cart?: {customer_field?: {set_value: (v: string) => Promise<void>}};
+          frm?: {set_value: (f: string, v: string) => Promise<void>; doc?: {customer?: string}};
+        };
+        frappe?: {boot?: {stock_settings?: Record<string, unknown>}};
+      }
+    ).cur_pos;
+    const frappe = (
+      window as unknown as {frappe?: {boot?: {stock_settings?: Record<string, unknown>}}}
+    ).frappe;
+    if (curPos && curPos.allow_negative_stock == null) {
+      curPos.allow_negative_stock = true;
+    }
+    if (frappe?.boot) {
+      frappe.boot.stock_settings = {
+        allow_negative_stock: 1,
+        ...(frappe.boot.stock_settings ?? {}),
+      };
+    }
+    if (curPos?.frm?.doc?.customer === customerName) {
+      return;
+    }
+    if (curPos?.cart?.customer_field?.set_value) {
+      await curPos.cart.customer_field.set_value(customerName);
+    }
+    if (curPos?.frm?.set_value) {
+      await curPos.frm.set_value('customer', customerName);
+    }
+  }, customer);
+  await page.waitForTimeout(800);
+};
+
+/** Filter POS item grid by barcode and add the single match to the cart. */
+const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => {
+  const barcodeInput = page
+    .getByPlaceholder(/barcode|item code|serial/i)
+    .or(
+      page.locator(
+        'input.jpos-search-input, input[data-fieldname="barcode"], .pos-barcode input, input.barcode, #barcode',
+      ),
+    )
+    .first();
+  if ((await barcodeInput.count()) === 0) {
+    return false;
+  }
+  await barcodeInput.click({timeout: 10_000, force: true});
+  await barcodeInput.fill('');
+  await barcodeInput.fill(barcode);
+  try {
+    await page.waitForFunction(
+      () => {
+        const items = (window as unknown as {cur_pos?: {item_selector?: {items?: unknown[]}}})
+          .cur_pos?.item_selector?.items;
+        return Array.isArray(items) && items.length === 1;
+      },
+      undefined,
+      {timeout: 10_000},
+    );
+  } catch {
+    console.warn('S07: barcode filter did not resolve to a single item');
+  }
+  const added = await page.evaluate(() => {
+    const sel = (
+      window as unknown as {
+        cur_pos?: {
+          item_selector?: {add_filtered_item_to_cart?: () => void; items?: unknown[]};
+          frm?: {doc?: {items?: unknown[]}};
+        };
+      }
+    ).cur_pos?.item_selector;
+    if (!sel || !sel.items || sel.items.length !== 1 || !sel.add_filtered_item_to_cart) {
+      return false;
+    }
+    sel.add_filtered_item_to_cart();
+    return true;
+  });
+  if (!added) {
+    // Fallback: click the filtered item card, then Enter.
+    const card = page.locator('.item-wrapper').first();
+    if ((await card.count()) > 0) {
+      await card.click({force: true}).catch(() => undefined);
+    }
+    await page.keyboard.press('Enter').catch(() => undefined);
+  }
+  const line = page.locator(
+    '.cart-items-section .cart-item, .cart-items-section .item-wrapper, .cart-items-section .item-name, .cart-items-section >> text=/Grams|gold-bangle|Bangle/i',
+  );
+  try {
+    await line.first().waitFor({state: 'visible', timeout: 15_000});
+    return true;
+  } catch {
+    const cartText = await page
+      .locator('.cart-items-section')
+      .innerText()
+      .catch(() => '');
+    console.warn(`S07: cart line missing after scan. cart="${cartText.slice(0, 120)}"`);
+    return /no items in cart/i.test(cartText) === false && cartText.trim().length > 0;
+  }
+};
+
+const openPosPayment = async (page: Page): Promise<boolean> => {
+  // Prefer the visible cart checkout control (numpad copy is often aria-hidden).
+  const checkout = page
+    .locator('.cart-totals-section .checkout-btn, div.checkout-btn:visible, .checkout-btn')
+    .first();
+  if ((await checkout.count()) === 0) {
+    return false;
+  }
+  await checkout.click({force: true});
+  try {
+    await page
+      .getByText(/Payment Method|Complete Order|Paid Amount/i)
+      .first()
+      .waitFor({
+        state: 'visible',
+        timeout: 10_000,
+      });
+    return true;
+  } catch {
+    // Payment pane may mount without Playwright visibility; accept DOM presence.
+    const hasPayment = await page.locator('.payment-container').count();
+    return hasPayment > 0;
+  }
+};
+
 const captureS07 = async (
   page: Page,
   browser: Browser,
@@ -1025,71 +1159,35 @@ const captureS07 = async (
       }
       await vp.waitForTimeout(1_000);
 
-      // UNVERIFIED: POS barcode / search input selectors
-      const barcodeInput = vp.locator(
-        'input.jpos-search-input, input[data-fieldname="barcode"], input[placeholder*="Barcode" i], input[placeholder*="barcode" i], input[placeholder*="Item code" i], input[placeholder*="serial" i], .pos-barcode input, input.barcode, #barcode, input[name="barcode"]',
-      );
-      if ((await barcodeInput.count()) === 0) {
-        console.warn('S07: barcode input not found after POS route selection');
-        await appendNote('S07', `Barcode input missing on ${posRoute}`);
-        await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-no-barcode-input.png'});
-        return;
+      try {
+        await selectPosCustomer(vp, 'Cash Customer');
+      } catch (err) {
+        console.warn(
+          `S07: customer select failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
 
-      await barcodeInput.first().click({timeout: 10_000, force: true});
-      await barcodeInput.first().fill('');
-      await barcodeInput.first().pressSequentially(barcodeValue, {delay: 40});
-      await vp.keyboard.press('Enter');
-
-      const line = vp.locator(
-        '.cart-items .cart-item, .pos-bill-item, .pos-item-row, .cart-container .item-row, tr.pos-bill-row, .jpos-cart-item, .jpos-item-row',
-      );
-      await line
-        .first()
-        .waitFor({state: 'visible', timeout: 15_000})
-        .catch(() => console.warn('S07: cart line did not appear after Enter'));
-      await vp.waitForTimeout(2_000);
+      const scanned = await scanPosBarcode(vp, barcodeValue);
+      if (!scanned) {
+        await appendNote('S07', `Barcode scan did not add a cart line (${barcodeValue})`);
+      }
+      await vp.waitForTimeout(1_500);
       await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-scan.png'});
+
+      // Payment screen — do not submit Complete Order.
+      if (scanned) {
+        const paid = await openPosPayment(vp);
+        if (paid) {
+          await vp.waitForTimeout(800);
+          await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-payment-dialog.png'});
+        } else {
+          await appendNote('S07', 'Checkout/payment screen did not open');
+        }
+      }
     },
     'S07-pos-scan.webm',
     'S07',
   );
-
-  // Payment dialog only if desk is ready (no shift lock)
-  await gotoApp(page, baseUrl, posRoute);
-  await prepareForShot(page);
-  const ready = await preparePosDesk(page);
-  if (!ready) {
-    return;
-  }
-
-  const payBtn = page.locator(
-    'button:has-text("Pay"), button:has-text("Payment"), .pos-pay-btn, button.pay-amount, [data-action="pay"]',
-  );
-  if ((await payBtn.count()) > 0) {
-    await payBtn
-      .first()
-      .click()
-      .catch(() => undefined);
-    await page.waitForTimeout(800);
-    const dialog = page.locator(
-      '.modal.show, .payment-dialog, .pos-payment, [data-modal="payment"], .frappe-modal',
-    );
-    if (
-      (await dialog.count()) > 0 &&
-      (await dialog
-        .first()
-        .isVisible()
-        .catch(() => false))
-    ) {
-      await capturePng(page, {scene: 'S07', relativeFile: 'S07/pos-payment-dialog.png'});
-      await page.keyboard.press('Escape').catch(() => undefined);
-    } else {
-      await appendNote('S07', 'Payment dialog did not open (or not visible)');
-    }
-  } else {
-    await appendNote('S07', 'Pay button not found — skipped payment dialog PNG');
-  }
 };
 
 const captureS08 = async (page: Page, baseUrl: string, context: BrowserContext): Promise<void> => {

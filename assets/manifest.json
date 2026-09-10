@@ -143,39 +143,6 @@
     "kind": "png"
   },
   {
-    "scene": "S07",
-    "file": "POS requires an open shift and none is open — not creating one",
-    "sourceUrl": "",
-    "capturedAt": "2026-09-10T10:51:32.532Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "note"
-  },
-  {
-    "scene": "S07",
-    "file": "screens/S07/pos-shift-required.png",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/point-of-sale",
-    "capturedAt": "2026-09-10T10:51:33.519Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "png"
-  },
-  {
-    "scene": "S07",
-    "file": "video/S07-pos-scan.webm",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/point-of-sale",
-    "capturedAt": "2026-09-10T10:51:33.799Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "webm"
-  },
-  {
     "scene": "S05",
     "file": "screens/S05/item-metal.png",
     "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
@@ -196,5 +163,38 @@
       "height": 1080
     },
     "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "screens/S07/pos-scan.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/point-of-sale",
+    "capturedAt": "2026-09-10T11:17:57.027Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "screens/S07/pos-payment-dialog.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/point-of-sale",
+    "capturedAt": "2026-09-10T11:18:08.818Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "video/S07-pos-scan.webm",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/point-of-sale",
+    "capturedAt": "2026-09-10T11:18:10.664Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "webm"
   }
 ]
