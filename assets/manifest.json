@@ -1,1 +1,178 @@
-[]
+[
+  {
+    "scene": "S02",
+    "file": "screens/S02/metal-rate.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/metal-rate/Al%20Noor%20Jewellery%20-%20Dubai",
+    "capturedAt": "2026-09-10T10:13:31.457Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S02",
+    "file": "video/S02-metal-rate.webm",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/metal-rate/Al%20Noor%20Jewellery%20-%20Dubai",
+    "capturedAt": "2026-09-10T10:13:45.446Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "webm"
+  },
+  {
+    "scene": "S03",
+    "file": "screens/S03/sales-invoice-new.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/sales-invoice/new",
+    "capturedAt": "2026-09-10T10:13:53.210Z",
+    "viewport": {
+      "width": 393,
+      "height": 659
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S03",
+    "file": "screens/S03/payment-entry-new.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/payment-entry/new",
+    "capturedAt": "2026-09-10T10:13:57.745Z",
+    "viewport": {
+      "width": 393,
+      "height": 659
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S06",
+    "file": "STOREFRONT_URL empty — skipped storefront captures",
+    "sourceUrl": "",
+    "capturedAt": "2026-09-10T10:16:06.381Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "note"
+  },
+  {
+    "scene": "S08",
+    "file": "screens/S08/pos-closing-entry.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/pos-closing-entry/POS-CLO-2026-00069",
+    "capturedAt": "2026-09-10T10:16:35.139Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S08",
+    "file": "screens/S08/pos-opening-entry.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/pos-opening-entry/POS-OPE-2026-00079",
+    "capturedAt": "2026-09-10T10:16:40.874Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S10",
+    "file": "screens/S10/support-dialog.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/payables",
+    "capturedAt": "2026-09-10T10:18:16.426Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S04",
+    "file": "screens/S04/jewellery-gross-profit.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/Jewellery%20Gross%20Profit?company=Al+Noor+Jewellery+-+Dubai&from_date=2012-06-20&to_date=2010-09-20&include_returns=1&group_division=Metal&group_level_1=Item+Code&group_level_2=None&group_level_3=None",
+    "capturedAt": "2026-09-10T10:45:47.611Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S09",
+    "file": "screens/S09/vat-report.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/FTA%20VAT%20201",
+    "capturedAt": "2026-09-10T10:47:10.057Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S09",
+    "file": "screens/S09/tax-free-transaction.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-10T10:47:17.205Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S09",
+    "file": "screens/S09/customer-kyc.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-10T10:47:59.999Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S12",
+    "file": "screens/S12/home.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/home",
+    "capturedAt": "2026-09-10T10:48:06.004Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S05",
+    "file": "screens/S05/item-metal.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-10T10:52:58.433Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S05",
+    "file": "screens/S05/stock-balance.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/Jewellery%20Stock%20Balance?company=Al+Noor+Jewellery+-+Dubai&from_date=2026-08-10&to_date=2026-09-10&division=Metal&item_code=%5B%22gold-bangle-22k%22%5D&valuation_field_type=Currency",
+    "capturedAt": "2026-09-10T10:53:21.284Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "FAILED: browserContext.close: Protocol error (Target.disposeBrowserContext): Failed to find context with id 85125A57BB30C87BE118D3F7AB5C6468",
+    "sourceUrl": "",
+    "capturedAt": "2026-09-10T12:16:10.804Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "note"
+  }
+]
