@@ -521,10 +521,17 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
   }
 
   // Jewellery POS profile picker. Wait for controller, then force Dubai profile.
-  await page.waitForFunction(
-    () => Boolean((window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.['pos-jewellery']),
-    {timeout: 30_000},
-  ).catch(() => undefined);
+  await page
+    .waitForFunction(
+      () =>
+        Boolean(
+          (window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.[
+            'pos-jewellery'
+          ],
+        ),
+      {timeout: 30_000},
+    )
+    .catch(() => undefined);
   await page.waitForTimeout(500);
 
   const selectDubaiProfile = async (): Promise<boolean> => {
@@ -532,9 +539,16 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
     const dialogSel =
       '.jpos-profile-select-dialog.show, .modal.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile")';
     let dialog = page.locator(dialogSel);
-    if (!(await dialog.first().isVisible().catch(() => false))) {
+    if (
+      !(await dialog
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
       console.log('S07: opening POS profile dialog');
-      await page.evaluate(`(async () => {
+      await page
+        .evaluate(
+          `(async () => {
         const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
         if (jp && typeof jp.prompt_pos_profile_selection === 'function') {
           Promise.resolve(jp.prompt_pos_profile_selection()).catch(function(){});
@@ -543,20 +557,33 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
         const chip = document.querySelector('.jpos-profile-chip, button.jpos-profile-chip');
         if (chip) { chip.click(); return 'chip'; }
         return 'none';
-      })()`).then((r) => console.log('S07 profile open via', r));
+      })()`,
+        )
+        .then((r) => console.log('S07 profile open via', r));
       await page.waitForTimeout(1_000);
       dialog = page.locator(dialogSel);
     }
-    if (!(await dialog.first().isVisible().catch(() => false))) {
+    if (
+      !(await dialog
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
       console.warn('S07: POS profile dialog did not open');
       return false;
     }
     console.log('S07: POS profile dialog visible — selecting Dubai');
     const dubai = dialog.first().getByText(/Dubai/i);
     if ((await dubai.count()) > 0) {
-      await dubai.first().click({timeout: 5_000, force: true}).catch(() => undefined);
+      await dubai
+        .first()
+        .click({timeout: 5_000, force: true})
+        .catch(() => undefined);
     } else {
-      const any = dialog.first().locator('.jpos-profile-option, [class*="profile-option"], .list-item, .card, label').first();
+      const any = dialog
+        .first()
+        .locator('.jpos-profile-option, [class*="profile-option"], .list-item, .card, label')
+        .first();
       await any.click({timeout: 5_000, force: true}).catch(() => undefined);
     }
     const confirm = dialog
@@ -565,9 +592,15 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
         'button:has-text("Continue"), button:has-text("Select"), button:has-text("OK"), button.btn-primary, button:has-text("Start")',
       );
     if ((await confirm.count()) > 0) {
-      await confirm.first().click({timeout: 5_000}).catch(() => undefined);
+      await confirm
+        .first()
+        .click({timeout: 5_000})
+        .catch(() => undefined);
     }
-    await dialog.first().waitFor({state: 'hidden', timeout: 20_000}).catch(() => undefined);
+    await dialog
+      .first()
+      .waitFor({state: 'hidden', timeout: 20_000})
+      .catch(() => undefined);
     await page.waitForTimeout(1_200);
     const profile = await page.evaluate(`(() => {
       const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
@@ -1036,7 +1069,12 @@ type JewelleryPosController = {
 /** Jewellery POS: set Cash Customer via customer_control (checkout reads this, not only frm). */
 const selectPosCustomer = async (page: Page, customer = 'Cash Customer'): Promise<void> => {
   await page.waitForFunction(
-    () => Boolean((window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.['pos-jewellery']),
+    () =>
+      Boolean(
+        (window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.[
+          'pos-jewellery'
+        ],
+      ),
     {timeout: 30_000},
   );
   const set = await page.evaluate(async (customerName) => {
@@ -1106,7 +1144,10 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
   if (await detail.isVisible().catch(() => false)) {
     const qty = detail.locator('input[data-fieldname="qty"]');
     if ((await qty.count()) > 0) {
-      const cur = await qty.first().inputValue().catch(() => '');
+      const cur = await qty
+        .first()
+        .inputValue()
+        .catch(() => '');
       // Product finding: report whether scan pre-fills piece weight from the item.
       if (!cur || Number(cur) === 0) {
         console.log('S07 qty as scanned (before any fill)', cur, '→ typed 32.4');
@@ -1129,8 +1170,17 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
       ).frappe?.pages?.['pos-jewellery']?.jewellery_pos;
       jp?.handle_add_to_cart_confirm?.();
     });
-    if ((await addBtn.count()) > 0 && (await addBtn.first().isVisible().catch(() => false))) {
-      await addBtn.first().click({force: true}).catch(() => undefined);
+    if (
+      (await addBtn.count()) > 0 &&
+      (await addBtn
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await addBtn
+        .first()
+        .click({force: true})
+        .catch(() => undefined);
     }
   }
 
@@ -1160,7 +1210,9 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
     /32\.4/i.test(state.cartText || '') ||
     (/22K/i.test(state.cartText || '') && /gold-bangle/i.test(state.cartText || ''));
   if (!ok) {
-    console.warn(`S07: cart line missing after scan. cart="${(state.cartText || '').slice(0, 160)}"`);
+    console.warn(
+      `S07: cart line missing after scan. cart="${(state.cartText || '').slice(0, 160)}"`,
+    );
   }
   return ok;
 };
@@ -1230,7 +1282,6 @@ const openPosPayment = async (page: Page): Promise<boolean> => {
   });
   return visible && /\bCash\b/i.test(modalText) && /Card/i.test(modalText);
 };
-
 
 const captureS07 = async (
   page: Page,

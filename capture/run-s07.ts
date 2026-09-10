@@ -3,7 +3,7 @@
  */
 import 'dotenv/config';
 import {chromium} from 'playwright';
-import {mkdir, rename, writeFile, copyFile} from 'node:fs/promises';
+import {mkdir, rename, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const BASE = (process.env.CAPTURE_BASE_URL || '').replace(/\/$/, '');
@@ -53,19 +53,33 @@ async function main() {
   const company = page.locator(
     '.amarjm-desk-company-dialog.show, .modal.show:has-text("Select Company")',
   );
-  if (await company.first().isVisible().catch(() => false)) {
+  if (
+    await company
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
     console.log('company dialog');
-    await company.first().getByText(/Dubai/i).first().click({force: true}).catch(() => undefined);
-    await company.first().locator('button:has-text("Continue")').first().click().catch(() => undefined);
+    await company
+      .first()
+      .getByText(/Dubai/i)
+      .first()
+      .click({force: true})
+      .catch(() => undefined);
+    await company
+      .first()
+      .locator('button:has-text("Continue")')
+      .first()
+      .click()
+      .catch(() => undefined);
     await page.waitForTimeout(1000);
     await page.goto(`${BASE}/app/pos-jewellery`);
     await page.waitForTimeout(2500);
   }
 
-  await page.waitForFunction(
-    `() => !!(window.frappe?.pages?.['pos-jewellery']?.jewellery_pos)`,
-    {timeout: 30_000},
-  );
+  await page.waitForFunction(`() => !!(window.frappe?.pages?.['pos-jewellery']?.jewellery_pos)`, {
+    timeout: 30_000,
+  });
   console.log('controller ready');
 
   // Profile — open dialog without awaiting (prompt resolves only after Continue)
@@ -77,18 +91,30 @@ async function main() {
   await page.waitForTimeout(1500);
   let dlg = page.locator('.jpos-profile-select-dialog.show');
   if (!(await dlg.isVisible().catch(() => false))) {
-    await page.locator('.jpos-profile-chip').click({force: true}).catch(() => undefined);
+    await page
+      .locator('.jpos-profile-chip')
+      .click({force: true})
+      .catch(() => undefined);
     await page.waitForTimeout(1000);
     dlg = page.locator('.jpos-profile-select-dialog.show');
   }
   console.log('profile dialog', await dlg.isVisible().catch(() => false));
   if (await dlg.isVisible().catch(() => false)) {
     // Click the Dubai option card/row, not just any "Dubai" text
-    const dubaiRow = dlg.locator('.jpos-profile-option, [class*="profile-option"], .list-item, .card').filter({hasText: /Dubai/i});
+    const dubaiRow = dlg
+      .locator('.jpos-profile-option, [class*="profile-option"], .list-item, .card')
+      .filter({hasText: /Dubai/i});
     if (await dubaiRow.count()) await dubaiRow.first().click({force: true});
-    else await dlg.getByText(/Al Noor Jewellery - Dubai/i).first().click({force: true});
+    else
+      await dlg
+        .getByText(/Al Noor Jewellery - Dubai/i)
+        .first()
+        .click({force: true});
     await page.waitForTimeout(400);
-    await dlg.locator('button:has-text("Continue"), button.btn-primary').first().click({force: true});
+    await dlg
+      .locator('button:has-text("Continue"), button.btn-primary')
+      .first()
+      .click({force: true});
     await page.waitForTimeout(500);
     // Force-apply if dialog still open / profile unset
     await page.evaluate(`(async () => {
@@ -147,7 +173,10 @@ async function main() {
   await page.waitForTimeout(2000);
   await page.screenshot({path: `${ART}/s07-after-enter.png`});
 
-  const detailVisible = await page.locator('.jpos-details-panel').isVisible().catch(() => false);
+  const detailVisible = await page
+    .locator('.jpos-details-panel')
+    .isVisible()
+    .catch(() => false);
   console.log('detail visible', detailVisible);
   let qtySource: 'prefilled' | 'typed' | 'n/a' = 'n/a';
   let qtyAsScanned: string | null = null;
@@ -170,7 +199,12 @@ async function main() {
       `(() => frappe.pages['pos-jewellery'].jewellery_pos.handle_add_to_cart_confirm())()`,
     );
     const add = page.locator('button:has-text("Add to Cart"), button.jpos-add-to-cart-btn');
-    if (await add.first().isVisible().catch(() => false)) {
+    if (
+      await add
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
       await add.first().click({force: true});
     }
   } else {
@@ -197,7 +231,13 @@ async function main() {
         `(() => frappe.pages['pos-jewellery'].jewellery_pos.handle_add_to_cart_confirm())()`,
       );
       const add = page.locator('button:has-text("Add to Cart")');
-      if (await add.first().isVisible().catch(() => false)) await add.first().click({force: true});
+      if (
+        await add
+          .first()
+          .isVisible()
+          .catch(() => false)
+      )
+        await add.first().click({force: true});
     }
   }
   console.log('qtySource', qtySource, 'qtyAsScanned', qtyAsScanned);
@@ -239,22 +279,44 @@ async function main() {
   await page.waitForTimeout(1500);
 
   // Fallback: checkout click / button
-  let pay = page.locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show');
-  if (!(await pay.first().isVisible().catch(() => false))) {
+  const pay = page.locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show');
+  if (
+    !(await pay
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
     await page.evaluate(`(async () => {
       const jp = frappe.pages['pos-jewellery'].jewellery_pos;
       if (jp.handle_checkout_click) await jp.handle_checkout_click();
       else if (jp.go_to_payment_step) await jp.go_to_payment_step();
     })()`);
     await page.waitForTimeout(1500);
-    if (!(await pay.first().isVisible().catch(() => false))) {
-      await page.locator('button.jpos-checkout-btn').click({force: true}).catch(() => undefined);
+    if (
+      !(await pay
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await page
+        .locator('button.jpos-checkout-btn')
+        .click({force: true})
+        .catch(() => undefined);
       await page.waitForTimeout(1500);
     }
   }
 
-  console.log('pay visible', await pay.first().isVisible().catch(() => false));
-  const payText = await pay.first().innerText().catch(() => '');
+  console.log(
+    'pay visible',
+    await pay
+      .first()
+      .isVisible()
+      .catch(() => false),
+  );
+  const payText = await pay
+    .first()
+    .innerText()
+    .catch(() => '');
   console.log('pay', payText.replace(/\s+/g, ' ').slice(0, 500));
   await page.screenshot({path: path.join(SCREENS, 'pos-payment-dialog.png')});
   await page.screenshot({path: `${ART}/S07-pos-payment-dialog.png`});
