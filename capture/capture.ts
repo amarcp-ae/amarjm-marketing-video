@@ -210,7 +210,11 @@ const prepareForShot = async (page: Page): Promise<void> => {
   } catch {
     // Desk keeps websockets open; fall through to the fixed settle wait.
   }
-  await page.waitForTimeout(800);
+  // Close Link/Awesomplete dropdowns left open by set_filter_value / typing.
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(400);
 };
 
 const capturePng = async (

@@ -99,28 +99,6 @@
     "kind": "png"
   },
   {
-    "scene": "S05",
-    "file": "screens/S05/item-metal.png",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
-    "capturedAt": "2026-09-10T10:45:53.916Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "png"
-  },
-  {
-    "scene": "S05",
-    "file": "screens/S05/stock-balance.png",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/Jewellery%20Stock%20Balance?company=Al+Noor+Jewellery+-+Dubai&from_date=2026-08-10&to_date=2026-09-10&division=Metal&item_code=%5B%22gold-bangle-22k%22%5D&valuation_field_type=Currency",
-    "capturedAt": "2026-09-10T10:46:12.894Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "png"
-  },
-  {
     "scene": "S09",
     "file": "screens/S09/vat-report.png",
     "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/FTA%20VAT%20201",
@@ -196,5 +174,27 @@
       "height": 1080
     },
     "kind": "webm"
+  },
+  {
+    "scene": "S05",
+    "file": "screens/S05/item-metal.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-10T10:52:58.433Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S05",
+    "file": "screens/S05/stock-balance.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/query-report/Jewellery%20Stock%20Balance?company=Al+Noor+Jewellery+-+Dubai&from_date=2026-08-10&to_date=2026-09-10&division=Metal&item_code=%5B%22gold-bangle-22k%22%5D&valuation_field_type=Currency",
+    "capturedAt": "2026-09-10T10:53:21.284Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
   }
 ]
