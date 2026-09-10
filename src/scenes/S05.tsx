@@ -1,10 +1,9 @@
 import React from 'react';
 import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {brand} from '../brand';
-import {GoldPlate} from '../components/GoldPlate';
-import {KenBurnsMedia} from '../components/KenBurnsMedia';
-import {LaptopFrame} from '../components/LaptopFrame';
-import {SceneCaptions} from '../components/SceneCaptions';
+import {DeviceStage} from '../components/DeviceStage';
+import {KineticHeadline} from '../components/KineticHeadline';
+import {SceneShell} from '../components/SceneShell';
 import {ASSETS} from '../lib/assets';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
@@ -17,99 +16,76 @@ export const S05: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-
-  const arrowProgress = interpolate(frame, [18, 70], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-
-  const totalSeconds = 24 * 60;
-  const elapsed = Math.min(totalSeconds, Math.floor((frame / fps) * 8));
-  const remaining = Math.max(0, totalSeconds - elapsed);
-  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
-  const ss = String(remaining % 60).padStart(2, '0');
-
-  const cardOpacity = interpolate(frame, [30, 42], [0, 1], {
+  const arrow = interpolate(frame, [16, 64], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
   return (
-    <AbsoluteFill>
-      <GoldPlate />
+    <SceneShell sceneId={SCENE_ID}>
+      <KineticHeadline
+        sceneId={SCENE_ID}
+        tokens={[
+          {text: 'قطعة'},
+          {text: 'في'},
+          {text: 'دبي', gold: true},
+          {text: '،'},
+          {text: 'بيعٌ'},
+          {text: 'في'},
+          {text: 'مسقط', gold: true},
+        ]}
+      />
       <AbsoluteFill
         style={{
-          opacity: fade,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
-          gap: 36,
-          fontFamily: brand.fontFamily,
+          gap: 28,
+          paddingTop: 40,
         }}
       >
-        <LaptopFrame width={720} height={480}>
-          <KenBurnsMedia src={ASSETS.screens.S05.itemMetal} kind="image" />
-        </LaptopFrame>
-        <LaptopFrame width={720} height={480}>
-          <KenBurnsMedia src={ASSETS.screens.S05.stockBalance} kind="image" />
-        </LaptopFrame>
-
+        <DeviceStage
+          src={ASSETS.screens.S05.itemMetal}
+          width={760}
+          height={520}
+          tiltDeg={8}
+          crop={{objectPosition: '45% 35%', scale: 1.4}}
+          enterDelay={8}
+        />
+        <DeviceStage
+          src={ASSETS.screens.S05.stockBalance}
+          width={760}
+          height={520}
+          tiltDeg={6}
+          crop={{objectPosition: '55% 40%', scale: 1.35}}
+          enterDelay={14}
+          callout={{label: 'المخزون', x: 380, y: 220, delay: Math.round(1.2 * fps)}}
+        />
         <svg
-          width={280}
-          height={80}
-          style={{
-            position: 'absolute',
-            top: '46%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-          }}
+          width={240}
+          height={70}
+          style={{position: 'absolute', top: '48%', left: '50%', transform: 'translate(-50%,-50%)'}}
         >
           <defs>
-            <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
               <path d="M0,0 L6,3 L0,6 Z" fill={brand.colors.gold} />
             </marker>
           </defs>
           <line
-            x1={20}
+            x1={10}
             y1={40}
-            x2={20 + arrowProgress * 220}
+            x2={10 + arrow * 200}
             y2={40}
             stroke={brand.colors.gold}
-            strokeWidth={4}
-            markerEnd="url(#arrowHead)"
+            strokeWidth={3}
+            markerEnd="url(#arr)"
           />
-          <text x={40} y={28} fill={brand.colors.ivory} fontSize={18} fontFamily={brand.fontFamily}>
+          <text x={40} y={24} fill={brand.colors.ivory} fontSize={16} fontFamily={brand.fontFamily}>
             Dubai → Muscat
           </text>
         </svg>
-
-        <div
-          dir="rtl"
-          lang="ar"
-          style={{
-            position: 'absolute',
-            bottom: 140,
-            opacity: cardOpacity,
-            backgroundColor: brand.colors.ivory,
-            color: brand.colors.ink,
-            border: `2px solid ${brand.colors.accent}`,
-            borderRadius: 12,
-            padding: '16px 28px',
-            fontSize: 28,
-            fontWeight: 600,
-            boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
-          }}
-        >
-          محجوزة — {mm}:{ss}
-        </div>
       </AbsoluteFill>
-      <SceneCaptions sceneId={SCENE_ID} />
-    </AbsoluteFill>
+    </SceneShell>
   );
 };
 

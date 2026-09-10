@@ -1,18 +1,9 @@
 import React from 'react';
-import {
-  AbsoluteFill,
-  Img,
-  OffthreadVideo,
-  Sequence,
-  interpolate,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-} from 'remotion';
+import {AbsoluteFill, Img, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {brand} from '../brand';
-import {GoldPlate} from '../components/GoldPlate';
-import {LaptopFrame} from '../components/LaptopFrame';
-import {SceneCaptions} from '../components/SceneCaptions';
+import {DeviceStage} from '../components/DeviceStage';
+import {KineticHeadline} from '../components/KineticHeadline';
+import {SceneShell} from '../components/SceneShell';
 import {ASSETS} from '../lib/assets';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
@@ -21,67 +12,50 @@ const SCENE_ID: SceneId = 'S07';
 
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
-const ScanSegment: React.FC = () => {
-  const frame = useCurrentFrame();
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+const Scan: React.FC = () => {
+  const {fps} = useVideoConfig();
   return (
-    <AbsoluteFill style={{opacity: fade, alignItems: 'center', justifyContent: 'center'}}>
-      <LaptopFrame width={1100} height={700}>
-        <OffthreadVideo
-          src={staticFile(ASSETS.video.S07PosScan)}
-          style={{width: '100%', height: '100%', objectFit: 'contain'}}
-          muted
-        />
-      </LaptopFrame>
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
+      <DeviceStage
+        src={ASSETS.video.S07PosScan}
+        kind="video"
+        width={1220}
+        height={740}
+        tiltDeg={7}
+        crop={{objectPosition: '50% 45%', scale: 1.5}}
+        callout={{label: 'امسح', x: 620, y: 320, delay: Math.round(0.8 * fps)}}
+      />
     </AbsoluteFill>
   );
 };
 
-const PaymentSegment: React.FC = () => {
+const Pay: React.FC = () => {
   const frame = useCurrentFrame();
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-  const cashPulse = 0.9 + Math.sin(frame / 8) * 0.1;
-  const cardPulse = 0.9 + Math.sin(frame / 8 + 1.2) * 0.1;
-
+  const {fps} = useVideoConfig();
+  const pulse = 0.92 + Math.sin(frame / 8) * 0.08;
   return (
-    <AbsoluteFill style={{opacity: fade, alignItems: 'center', justifyContent: 'center'}}>
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
       <div style={{position: 'relative'}}>
-        <LaptopFrame width={1100} height={700}>
-          <Img
-            src={staticFile(ASSETS.screens.S07.posPaymentDialog)}
-            style={{width: '100%', height: '100%', objectFit: 'contain'}}
-          />
-        </LaptopFrame>
-        <div
-          style={{
-            position: 'absolute',
-            left: 280,
-            bottom: 160,
-            width: 160,
-            height: 56,
-            border: `3px solid ${brand.colors.gold}`,
-            borderRadius: 8,
-            transform: `scale(${cashPulse})`,
-            boxShadow: `0 0 0 6px ${brand.colors.gold}33`,
-          }}
+        <DeviceStage
+          src={ASSETS.screens.S07.posPaymentDialog}
+          width={1220}
+          height={740}
+          tiltDeg={6}
+          crop={{objectPosition: '50% 60%', scale: 1.55}}
+          callout={{label: 'اقبض', x: 600, y: 480, delay: Math.round(0.5 * fps)}}
         />
         <div
           style={{
             position: 'absolute',
-            left: 480,
-            bottom: 160,
-            width: 160,
-            height: 56,
-            border: `3px solid ${brand.colors.accent}`,
-            borderRadius: 8,
-            transform: `scale(${cardPulse})`,
-            boxShadow: `0 0 0 6px ${brand.colors.accent}33`,
+            left: 300,
+            bottom: 150,
+            width: 150,
+            height: 50,
+            border: `2px solid ${brand.colors.gold}`,
+            borderRadius: 6,
+            transform: `scale(${pulse})`,
+            boxShadow: `0 0 0 5px ${brand.colors.gold}33`,
+            pointerEvents: 'none',
           }}
         />
       </div>
@@ -89,45 +63,43 @@ const PaymentSegment: React.FC = () => {
   );
 };
 
-const RfidSegment: React.FC = () => {
+const Rfid: React.FC = () => {
   const frame = useCurrentFrame();
   const {durationInFrames: dur} = useVideoConfig();
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
   const count = Math.round(
-    interpolate(frame, [0, Math.max(1, dur - 20)], [0, 312], {
+    interpolate(frame, [0, Math.max(1, dur - 12)], [0, 312], {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp',
     }),
   );
-
   return (
-    <AbsoluteFill style={{opacity: fade}}>
-      <GoldPlate />
-      <AbsoluteFill
+    <AbsoluteFill
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: brand.fontFamily,
+        color: brand.colors.ivory,
+      }}
+    >
+      <div style={{fontSize: 96, fontWeight: 700, color: brand.colors.gold}}>
+        {count}
+        <span style={{fontSize: 48, color: brand.colors.ivory}}> / 312</span>
+      </div>
+      <div dir="rtl" lang="ar" style={{marginTop: 12, fontSize: 36, opacity: 0.9}}>
+        قطعة
+      </div>
+      <Img
+        src={staticFile(ASSETS.items.goldBangle22k)}
         style={{
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: brand.fontFamily,
-          color: brand.colors.ivory,
+          position: 'absolute',
+          left: 160,
+          bottom: 140,
+          width: 140,
+          height: 140,
+          objectFit: 'contain',
+          opacity: 0.9,
         }}
-      >
-        <div
-          dir="rtl"
-          lang="ar"
-          style={{
-            fontSize: 72,
-            fontWeight: 700,
-            color: brand.colors.gold,
-            textAlign: 'center',
-          }}
-        >
-          {count} / 312 قطعة
-        </div>
-        <div style={{marginTop: 16, fontSize: 28, opacity: 0.85}}>RFID</div>
-      </AbsoluteFill>
+      />
     </AbsoluteFill>
   );
 };
@@ -138,24 +110,29 @@ export const S07: React.FC = () => {
   const seg = Math.max(1, Math.floor(dur / 3));
 
   return (
-    <AbsoluteFill style={{backgroundColor: brand.colors.ink}}>
+    <SceneShell sceneId={SCENE_ID}>
+      <KineticHeadline
+        sceneId={SCENE_ID}
+        tokens={[
+          {text: 'امسح', gold: true},
+          {text: '،'},
+          {text: 'أضف'},
+          {text: '،'},
+          {text: 'اقبض'},
+          {text: '،'},
+          {text: 'اطبع'},
+        ]}
+      />
       <Sequence from={0} durationInFrames={seg}>
-        <AbsoluteFill>
-          <GoldPlate />
-          <ScanSegment />
-        </AbsoluteFill>
+        <Scan />
       </Sequence>
       <Sequence from={seg} durationInFrames={seg}>
-        <AbsoluteFill>
-          <GoldPlate />
-          <PaymentSegment />
-        </AbsoluteFill>
+        <Pay />
       </Sequence>
       <Sequence from={seg * 2} durationInFrames={dur - seg * 2}>
-        <RfidSegment />
+        <Rfid />
       </Sequence>
-      <SceneCaptions sceneId={SCENE_ID} />
-    </AbsoluteFill>
+    </SceneShell>
   );
 };
 

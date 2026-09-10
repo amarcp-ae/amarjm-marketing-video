@@ -1,18 +1,8 @@
 import React from 'react';
-import {
-  AbsoluteFill,
-  Img,
-  interpolate,
-  spring,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-} from 'remotion';
-import {brand} from '../brand';
-import {Callout} from '../components/Callout';
-import {GoldPlate} from '../components/GoldPlate';
-import {PhoneFrame} from '../components/PhoneFrame';
-import {SceneCaptions} from '../components/SceneCaptions';
+import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {DeviceStage} from '../components/DeviceStage';
+import {KineticHeadline} from '../components/KineticHeadline';
+import {SceneShell} from '../components/SceneShell';
 import {ASSETS} from '../lib/assets';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
@@ -26,57 +16,53 @@ export const S03: React.FC = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const leftIn = spring({
-    frame: frame - 6,
-    fps,
-    config: {damping: 16, stiffness: 90},
-  });
-  const rightIn = spring({
-    frame: frame - 14,
-    fps,
-    config: {damping: 16, stiffness: 90},
-  });
-
-  const leftX = interpolate(leftIn, [0, 1], [-420, 0]);
-  const rightX = interpolate(rightIn, [0, 1], [420, 0]);
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const leftIn = spring({frame: frame - 8, fps, config: {damping: 16, stiffness: 90}});
+  const rightIn = spring({frame: frame - 16, fps, config: {damping: 16, stiffness: 90}});
 
   return (
-    <AbsoluteFill>
-      <GoldPlate />
+    <SceneShell sceneId={SCENE_ID}>
+      <KineticHeadline
+        sceneId={SCENE_ID}
+        tokens={[
+          {text: 'حساباتك'},
+          {text: 'من'},
+          {text: 'جوّالك', gold: true},
+        ]}
+      />
       <AbsoluteFill
         style={{
-          opacity: fade,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
-          gap: 64,
-          fontFamily: brand.fontFamily,
+          gap: 72,
+          paddingTop: 48,
         }}
       >
-        <div style={{transform: `translateX(${leftX}px)`}}>
-          <PhoneFrame width={340} height={680}>
-            <Img
-              src={staticFile(ASSETS.screens.S03.salesInvoice)}
-              style={{width: '100%', height: '100%', objectFit: 'cover'}}
-            />
-          </PhoneFrame>
+        <div style={{transform: `translateX(${interpolate(leftIn, [0, 1], [-80, 0])}px)`}}>
+          <DeviceStage
+            src={ASSETS.screens.S03.salesInvoice}
+            variant="phone"
+            width={360}
+            height={700}
+            tiltDeg={8}
+            crop={{objectPosition: '50% 30%', scale: 1.2}}
+            enterDelay={6}
+          />
         </div>
-        <div style={{position: 'relative', transform: `translateX(${rightX}px)`}}>
-          <PhoneFrame width={340} height={680}>
-            <Img
-              src={staticFile(ASSETS.screens.S03.paymentEntry)}
-              style={{width: '100%', height: '100%', objectFit: 'cover'}}
-            />
-          </PhoneFrame>
-          <Callout label="حفظ" x={170} y={560} ringSize={64} delay={Math.round(1.2 * fps)} />
+        <div style={{transform: `translateX(${interpolate(rightIn, [0, 1], [80, 0])}px)`}}>
+          <DeviceStage
+            src={ASSETS.screens.S03.paymentEntry}
+            variant="phone"
+            width={360}
+            height={700}
+            tiltDeg={6}
+            crop={{objectPosition: '50% 55%', scale: 1.25}}
+            enterDelay={12}
+            callout={{label: 'حفظ', x: 180, y: 520, delay: Math.round(1.1 * fps)}}
+          />
         </div>
       </AbsoluteFill>
-      <SceneCaptions sceneId={SCENE_ID} />
-    </AbsoluteFill>
+    </SceneShell>
   );
 };
 

@@ -1,18 +1,9 @@
 import React from 'react';
-import {
-  AbsoluteFill,
-  Img,
-  interpolate,
-  spring,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-} from 'remotion';
+import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {brand} from '../brand';
-import {GoldPlate} from '../components/GoldPlate';
-import {KenBurnsMedia} from '../components/KenBurnsMedia';
-import {LaptopFrame} from '../components/LaptopFrame';
-import {SceneCaptions} from '../components/SceneCaptions';
+import {DeviceStage} from '../components/DeviceStage';
+import {KineticHeadline} from '../components/KineticHeadline';
+import {SceneShell} from '../components/SceneShell';
 import {ASSETS} from '../lib/assets';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
@@ -27,89 +18,77 @@ export const S12: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-
-  const typeStart = Math.round(0.8 * fps);
+  const typeStart = Math.round(0.7 * fps);
   const charsShown = Math.min(PROMPT.length, Math.max(0, Math.floor((frame - typeStart) / 2)));
   const typed = PROMPT.slice(0, charsShown);
-
-  const pulse = 1 + Math.sin(frame / 6) * 0.18;
+  const pulse = 1 + Math.sin(frame / 6) * 0.16;
   const check = spring({
     frame: frame - (typeStart + PROMPT.length * 2 + 8),
     fps,
     config: {damping: 12, stiffness: 160},
   });
-  const reportIn = spring({
-    frame: frame - (typeStart + PROMPT.length * 2 + 20),
-    fps,
-    config: {damping: 14, stiffness: 100},
-  });
 
   return (
-    <AbsoluteFill>
-      <GoldPlate />
-      <AbsoluteFill
-        style={{
-          opacity: fade,
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: brand.fontFamily,
-        }}
-      >
-        <LaptopFrame width={1100} height={700}>
-          <KenBurnsMedia src={ASSETS.screens.S12.home} kind="image" />
-        </LaptopFrame>
-
+    <SceneShell sceneId={SCENE_ID}>
+      <KineticHeadline
+        sceneId={SCENE_ID}
+        tokens={[
+          {text: 'تكلّم'},
+          {text: 'مع'},
+          {text: 'نظامك', gold: true},
+        ]}
+      />
+      <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
+        <DeviceStage
+          src={ASSETS.screens.S12.home}
+          width={1180}
+          height={720}
+          tiltDeg={7}
+          crop={{objectPosition: '50% 30%', scale: 1.45}}
+          callout={{label: 'صوت', x: 200, y: 520, delay: Math.round(1.1 * fps)}}
+        />
         <div
           style={{
             position: 'absolute',
-            left: 120,
-            bottom: 160,
-            width: 72,
-            height: 72,
+            left: 140,
+            bottom: 150,
+            width: 64,
+            height: 64,
             borderRadius: '50%',
             backgroundColor: brand.colors.accent,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            boxShadow: `0 0 0 ${10 * pulse}px ${brand.colors.gold}33`,
           }}
         >
-          {[1, 2, 3].map((ring) => (
-            <div
-              key={ring}
-              style={{
-                position: 'absolute',
-                inset: -ring * 14 * pulse,
-                borderRadius: '50%',
-                border: `2px solid ${brand.colors.gold}`,
-                opacity: Math.max(0, 0.55 - ring * 0.15),
-              }}
-            />
-          ))}
-          <div style={{color: brand.colors.ivory, fontSize: 28}}>🎤</div>
+          <div
+            style={{
+              width: 18,
+              height: 28,
+              borderRadius: 9,
+              background: brand.colors.ivory,
+            }}
+          />
         </div>
-
         <div
           dir="rtl"
           lang="ar"
           style={{
             position: 'absolute',
-            bottom: 170,
-            left: 220,
+            bottom: 160,
+            left: 230,
             minWidth: 520,
-            backgroundColor: 'rgba(247,243,235,0.92)',
+            backgroundColor: 'rgba(247,243,235,0.94)',
             color: brand.colors.ink,
             borderRadius: 999,
-            padding: '14px 24px',
-            fontSize: 28,
+            padding: '12px 22px',
+            fontSize: 26,
             fontWeight: 500,
+            fontFamily: brand.fontFamily,
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
           }}
         >
           <span>{typed}</span>
@@ -128,35 +107,14 @@ export const S12: React.FC = () => {
               opacity: check,
               color: '#2e7d32',
               fontWeight: 700,
-              fontSize: 32,
+              fontSize: 28,
             }}
           >
             ✓
           </span>
         </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            right: 100,
-            top: 140,
-            width: 320,
-            transform: `translateY(${interpolate(reportIn, [0, 1], [40, 0])}px) scale(${reportIn})`,
-            opacity: reportIn,
-            borderRadius: 10,
-            overflow: 'hidden',
-            boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-            border: `2px solid ${brand.colors.gold}`,
-          }}
-        >
-          <Img
-            src={staticFile(ASSETS.screens.S04.jewelleryGrossProfit)}
-            style={{width: '100%', height: 200, objectFit: 'cover'}}
-          />
-        </div>
       </AbsoluteFill>
-      <SceneCaptions sceneId={SCENE_ID} />
-    </AbsoluteFill>
+    </SceneShell>
   );
 };
 

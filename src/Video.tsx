@@ -42,35 +42,59 @@ const startsById: Record<SceneId, number> = SCENE_IDS.reduce(
   {} as Record<SceneId, number>,
 );
 
-/** −18 dB under VO, −10 dB in S01/S13 */
-const VOL_DUCK = Math.pow(10, -18 / 20);
-const VOL_OPEN = Math.pow(10, -10 / 20);
-const VOL_SFX = Math.pow(10, -6 / 20);
-const DUCK_FRAMES = Math.round(0.4 * FPS);
+/** −26 dB under VO; −16 dB only in S01 first 6s and S13 last 6s */
+const VOL_UNDER_VO = Math.pow(10, -26 / 20);
+const VOL_OPEN = Math.pow(10, -16 / 20);
+const VOL_SFX = Math.pow(10, -10 / 20);
+const SIDECHAIN_FRAMES = Math.round(0.6 * FPS);
+const OPEN_FRAMES = Math.round(6 * FPS);
 
 const MusicBed: React.FC = () => {
   const frame = useCurrentFrame();
   const volume = useMemo(() => {
-    const inOpen = frame < startsById.S02 || frame >= startsById.S13;
-    const target = inOpen ? VOL_OPEN : VOL_DUCK;
-    // Soft 400ms duck around S01→S02 and S12→S13 boundaries
-    const boundaries = [startsById.S02, startsById.S13];
-    let v = target;
-    for (const b of boundaries) {
-      const dist = frame - b;
-      if (dist >= 0 && dist < DUCK_FRAMES) {
-        const from = b === startsById.S02 ? VOL_OPEN : VOL_DUCK;
-        const to = b === startsById.S02 ? VOL_DUCK : VOL_OPEN;
-        v = interpolate(dist, [0, DUCK_FRAMES], [from, to], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-        });
+    const inOpenHead = frame < OPEN_FRAMES;
+    const inOpenTail = frame >= MASTER_DURATION_IN_FRAMES - OPEN_FRAMES;
+    let base = inOpenHead || inOpenTail ? VOL_OPEN : VOL_UNDER_VO;
+
+    // Soft ramp out of the S01 open window into under-VO
+    if (!inOpenHead && frame < OPEN_FRAMES + SIDECHAIN_FRAMES) {
+      base = interpolate(
+        frame,
+        [OPEN_FRAMES, OPEN_FRAMES + SIDECHAIN_FRAMES],
+        [VOL_OPEN, VOL_UNDER_VO],
+        {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+      );
+    }
+    // Soft ramp into the S13 open window
+    const tailStart = MASTER_DURATION_IN_FRAMES - OPEN_FRAMES;
+    if (!inOpenTail && frame > tailStart - SIDECHAIN_FRAMES && frame < tailStart) {
+      base = interpolate(
+        frame,
+        [tailStart - SIDECHAIN_FRAMES, tailStart],
+        [VOL_UNDER_VO, VOL_OPEN],
+        {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+      );
+    }
+
+    // 600ms side-chain duck on every VO onset (scene start)
+    let sidechain = 1;
+    for (const onset of SCENE_STARTS) {
+      const t = frame - onset;
+      if (t >= 0 && t < SIDECHAIN_FRAMES) {
+        const env = Math.sin((t / SIDECHAIN_FRAMES) * Math.PI); // 0→1→0
+        sidechain = Math.min(sidechain, 1 - 0.35 * env);
       }
     }
-    return v;
+
+    // Keep the open windows audible — lighten sidechain there
+    if (inOpenHead || inOpenTail) {
+      sidechain = 1 - (1 - sidechain) * 0.25;
+    }
+
+    return base * sidechain;
   }, [frame]);
 
-  return <Audio src={staticFile('audio/music/bed.mp3')} volume={volume} loop />;
+  return <Audio src={staticFile('audio/music/bed-v2.mp3')} volume={volume} loop />;
 };
 
 type VideoProps = {
@@ -82,17 +106,12 @@ export const VideoComposition: React.FC<VideoProps> = ({layout}) => {
 
   const scale = layout === 'vertical' ? 0.92 : layout === 'square' ? 0.88 : 1;
   const cropStyle: React.CSSProperties =
-    layout === 'vertical'
+    layout === 'vertical' || layout === 'square'
       ? {
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
         }
-      : layout === 'square'
-        ? {
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center',
-          }
-        : {};
+      : {};
 
   return (
     <LayoutProvider layout={layout}>
@@ -113,7 +132,7 @@ export const VideoComposition: React.FC<VideoProps> = ({layout}) => {
 
         <MusicBed />
 
-        {/* SFX cues */}
+        {/* SFX at −10 dB */}
         <Sequence from={startsById.S07 + Math.round(2.2 * FPS)} durationInFrames={45}>
           <Audio src={staticFile('audio/sfx/barcode-beep.mp3')} volume={VOL_SFX} />
         </Sequence>

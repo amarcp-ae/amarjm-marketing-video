@@ -1,17 +1,9 @@
 import React from 'react';
-import {
-  AbsoluteFill,
-  Img,
-  interpolate,
-  spring,
-  staticFile,
-  useCurrentFrame,
-  useVideoConfig,
-} from 'remotion';
+import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {brand} from '../brand';
-import {GoldPlate} from '../components/GoldPlate';
-import {LaptopFrame} from '../components/LaptopFrame';
-import {SceneCaptions} from '../components/SceneCaptions';
+import {DeviceStage} from '../components/DeviceStage';
+import {KineticHeadline} from '../components/KineticHeadline';
+import {SceneShell} from '../components/SceneShell';
 import {ASSETS} from '../lib/assets';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
@@ -24,46 +16,46 @@ export const S08: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
   const {fps, durationInFrames: dur} = useVideoConfig();
-
-  const crossfadeAt = Math.round(dur * 0.45);
-  const closingOpacity = interpolate(frame, [crossfadeAt - 12, crossfadeAt + 12], [1, 0], {
+  const crossAt = Math.round(dur * 0.45);
+  const closingOpacity = interpolate(frame, [crossAt - 10, crossAt + 10], [1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const openingOpacity = interpolate(frame, [crossfadeAt - 12, crossfadeAt + 12], [0, 1], {
+  const openingOpacity = interpolate(frame, [crossAt - 10, crossAt + 10], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-
-  const fade = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-
   const redStamp = spring({
-    frame: frame - Math.round(0.8 * fps),
+    frame: frame - Math.round(0.7 * fps),
     fps,
     config: {damping: 11, stiffness: 150},
   });
   const greenStamp = spring({
-    frame: frame - (crossfadeAt + Math.round(0.5 * fps)),
+    frame: frame - (crossAt + Math.round(0.4 * fps)),
     fps,
     config: {damping: 11, stiffness: 150},
   });
 
   return (
-    <AbsoluteFill>
-      <GoldPlate />
-      <AbsoluteFill
-        style={{
-          opacity: fade,
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: brand.fontFamily,
-        }}
-      >
+    <SceneShell sceneId={SCENE_ID}>
+      <KineticHeadline
+        sceneId={SCENE_ID}
+        tokens={[
+          {text: 'أمانٌ', gold: true},
+          {text: 'لا'},
+          {text: 'يتهاون'},
+        ]}
+      />
+      <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
         <div style={{position: 'relative'}}>
-          <LaptopFrame width={1100} height={700}>
+          <DeviceStage
+            src={ASSETS.screens.S08.posClosingEntry}
+            width={1200}
+            height={740}
+            tiltDeg={7}
+            crop={{objectPosition: '50% 40%', scale: 1.4}}
+            callout={{label: 'الإقفال', x: 620, y: 280, delay: Math.round(0.9 * fps)}}
+          >
             <div style={{position: 'relative', width: '100%', height: '100%'}}>
               <Img
                 src={staticFile(ASSETS.screens.S08.posClosingEntry)}
@@ -72,7 +64,9 @@ export const S08: React.FC = () => {
                   inset: 0,
                   width: '100%',
                   height: '100%',
-                  objectFit: 'contain',
+                  objectFit: 'cover',
+                  objectPosition: '50% 40%',
+                  transform: 'scale(1.4)',
                   opacity: closingOpacity,
                 }}
               />
@@ -83,54 +77,53 @@ export const S08: React.FC = () => {
                   inset: 0,
                   width: '100%',
                   height: '100%',
-                  objectFit: 'contain',
+                  objectFit: 'cover',
+                  objectPosition: '50% 40%',
+                  transform: 'scale(1.4)',
                   opacity: openingOpacity,
                 }}
               />
             </div>
-          </LaptopFrame>
-
+          </DeviceStage>
           <div
             style={{
               position: 'absolute',
-              right: 80,
-              top: 120,
-              transform: `scale(${redStamp}) rotate(-18deg)`,
+              right: 70,
+              top: 110,
+              transform: `scale(${redStamp}) rotate(-16deg)`,
               opacity: Math.min(1, redStamp) * closingOpacity,
-              border: `4px solid ${brand.colors.accent}`,
+              border: `3px solid ${brand.colors.accent}`,
               color: brand.colors.accent,
-              backgroundColor: 'rgba(247,243,235,0.9)',
+              backgroundColor: 'rgba(247,243,235,0.92)',
               fontWeight: 700,
-              fontSize: 36,
-              padding: '10px 20px',
+              fontSize: 32,
+              padding: '8px 16px',
             }}
           >
             CLOSED
           </div>
-
           <div
             dir="rtl"
             lang="ar"
             style={{
               position: 'absolute',
-              right: 100,
-              top: 160,
-              transform: `scale(${greenStamp}) rotate(-12deg)`,
+              right: 90,
+              top: 150,
+              transform: `scale(${greenStamp}) rotate(-10deg)`,
               opacity: greenStamp,
-              border: '4px solid #2e7d32',
+              border: '3px solid #2e7d32',
               color: '#2e7d32',
               backgroundColor: 'rgba(247,243,235,0.92)',
               fontWeight: 700,
-              fontSize: 34,
-              padding: '10px 20px',
+              fontSize: 30,
+              padding: '8px 16px',
             }}
           >
             verified ✓
           </div>
         </div>
       </AbsoluteFill>
-      <SceneCaptions sceneId={SCENE_ID} />
-    </AbsoluteFill>
+    </SceneShell>
   );
 };
 

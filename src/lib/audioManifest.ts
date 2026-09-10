@@ -2,7 +2,7 @@ import sceneFrames from '../sceneFrames.json';
 
 export const FPS = 30;
 export const FALLBACK_SCENE_FRAMES = 90;
-export const VO_TAIL_SEC = 0.6;
+export const VO_TAIL_SEC = 0.4;
 
 export type SceneId =
   | 'S01'
