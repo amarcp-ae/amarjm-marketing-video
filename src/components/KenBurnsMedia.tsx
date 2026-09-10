@@ -1,5 +1,12 @@
 import React from 'react';
-import {Img, OffthreadVideo, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  Img,
+  OffthreadVideo,
+  interpolate,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 
 type KenBurnsMediaProps = {
   /** Relative path under publicDir, or an already-resolved staticFile URL. */

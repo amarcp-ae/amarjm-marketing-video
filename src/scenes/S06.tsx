@@ -1,5 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {GoldPlate} from '../components/GoldPlate';
 import {LaptopFrame} from '../components/LaptopFrame';
@@ -164,7 +172,9 @@ export const S06: React.FC = () => {
                 }}
               >
                 <Img src={staticFile(item)} style={{width: 56, height: 56, objectFit: 'contain'}} />
-                <span style={{fontSize: 14, fontWeight: 600, color: brand.colors.ink}}>AED 4,120</span>
+                <span style={{fontSize: 14, fontWeight: 600, color: brand.colors.ink}}>
+                  AED 4,120
+                </span>
               </div>
             ))}
           </div>

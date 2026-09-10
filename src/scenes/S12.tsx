@@ -1,5 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {GoldPlate} from '../components/GoldPlate';
 import {KenBurnsMedia} from '../components/KenBurnsMedia';
@@ -26,10 +34,7 @@ export const S12: React.FC = () => {
   });
 
   const typeStart = Math.round(0.8 * fps);
-  const charsShown = Math.min(
-    PROMPT.length,
-    Math.max(0, Math.floor((frame - typeStart) / 2)),
-  );
+  const charsShown = Math.min(PROMPT.length, Math.max(0, Math.floor((frame - typeStart) / 2)));
   const typed = PROMPT.slice(0, charsShown);
 
   const pulse = 1 + Math.sin(frame / 6) * 0.18;

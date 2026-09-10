@@ -1,5 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {Callout} from '../components/Callout';
 import {GoldPlate} from '../components/GoldPlate';

@@ -5,8 +5,8 @@ import {brand} from '../brand';
 const PARTICLES = Array.from({length: 20}, (_, i) => {
   const seed = (i + 1) * 17.13;
   return {
-    left: ((seed * 37) % 100),
-    top: ((seed * 53) % 100),
+    left: (seed * 37) % 100,
+    top: (seed * 53) % 100,
     size: 3 + ((seed * 11) % 7),
     opacity: 0.15 + ((seed * 7) % 21) / 100,
     speed: 0.35 + ((seed * 3) % 10) / 20,

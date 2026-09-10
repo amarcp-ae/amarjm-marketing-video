@@ -62,7 +62,12 @@ export const S05: React.FC = () => {
         <svg
           width={280}
           height={80}
-          style={{position: 'absolute', top: '46%', left: '50%', transform: 'translate(-50%, -50%)'}}
+          style={{
+            position: 'absolute',
+            top: '46%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
         >
           <defs>
             <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">

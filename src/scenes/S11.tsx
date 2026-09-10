@@ -1,5 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {GoldPlate} from '../components/GoldPlate';
 import {PhoneFrame} from '../components/PhoneFrame';
@@ -53,7 +61,12 @@ export const S11: React.FC = () => {
           fontFamily: brand.fontFamily,
         }}
       >
-        <div style={{transform: `translateX(${interpolate(leftIn, [0, 1], [-360, 0])}px)`, position: 'relative'}}>
+        <div
+          style={{
+            transform: `translateX(${interpolate(leftIn, [0, 1], [-360, 0])}px)`,
+            position: 'relative',
+          }}
+        >
           <PhoneFrame width={340} height={680}>
             <Img
               src={staticFile(ASSETS.screens.S03.salesInvoice)}
@@ -82,7 +95,12 @@ export const S11: React.FC = () => {
           </div>
         </div>
 
-        <div style={{transform: `translateX(${interpolate(rightIn, [0, 1], [360, 0])}px)`, position: 'relative'}}>
+        <div
+          style={{
+            transform: `translateX(${interpolate(rightIn, [0, 1], [360, 0])}px)`,
+            position: 'relative',
+          }}
+        >
           <PhoneFrame width={340} height={680}>
             <Img
               src={staticFile(ASSETS.screens.S03.paymentEntry)}

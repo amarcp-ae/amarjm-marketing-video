@@ -1,5 +1,13 @@
 import React from 'react';
-import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {GoldPlate} from '../components/GoldPlate';
 import {LaptopFrame} from '../components/LaptopFrame';
@@ -18,18 +26,14 @@ export const S08: React.FC = () => {
   const {fps, durationInFrames: dur} = useVideoConfig();
 
   const crossfadeAt = Math.round(dur * 0.45);
-  const closingOpacity = interpolate(
-    frame,
-    [crossfadeAt - 12, crossfadeAt + 12],
-    [1, 0],
-    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
-  );
-  const openingOpacity = interpolate(
-    frame,
-    [crossfadeAt - 12, crossfadeAt + 12],
-    [0, 1],
-    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
-  );
+  const closingOpacity = interpolate(frame, [crossfadeAt - 12, crossfadeAt + 12], [1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const openingOpacity = interpolate(frame, [crossfadeAt - 12, crossfadeAt + 12], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
 
   const fade = interpolate(frame, [0, 12], [0, 1], {
     extrapolateLeft: 'clamp',
