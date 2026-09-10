@@ -42,9 +42,9 @@ export const S04: React.FC = () => {
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
         <DeviceStage
           src={ASSETS.screens.S04.jewelleryGrossProfit}
-          width={1180}
-          height={720}
-          tiltDeg={7}
+          width={1480}
+          height={760}
+          tiltDeg={3}
           crop={{objectPosition: '48% 42%', scale: 1.55}}
           callout={{label: 'التقرير', x: 620, y: 300, delay: Math.round(0.9 * fps)}}
         />

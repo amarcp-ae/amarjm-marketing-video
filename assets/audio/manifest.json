@@ -9,7 +9,6 @@
     "similarity_boost": 0.8,
     "style": 0.2,
     "speed": 1.08,
-    "postTempo": 1.3886,
     "loudnorm": {
       "I": -16,
       "TP": -1.5
@@ -18,13 +17,15 @@
   "scenes": {
     "S01": {
       "file": "vo/S01.mp3",
-      "durationSec": 16.457,
-      "timestampsFile": "vo/S01.timestamps.json"
+      "durationSec": 24.084,
+      "timestampsFile": "vo/S01.timestamps.json",
+      "wordCount": 34
     },
     "S02": {
       "file": "vo/S02.mp3",
-      "durationSec": 7.027,
-      "timestampsFile": "vo/S02.timestamps.json"
+      "durationSec": 20.787,
+      "timestampsFile": "vo/S02.timestamps.json",
+      "wordCount": 21
     },
     "S03": {
       "file": "vo/S03.mp3",
@@ -43,8 +44,9 @@
     },
     "S06": {
       "file": "vo/S06.mp3",
-      "durationSec": 10.789,
-      "timestampsFile": "vo/S06.timestamps.json"
+      "durationSec": 16.329,
+      "timestampsFile": "vo/S06.timestamps.json",
+      "wordCount": 17
     },
     "S07": {
       "file": "vo/S07.mp3",
@@ -58,8 +60,9 @@
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 7.053,
-      "timestampsFile": "vo/S09.timestamps.json"
+      "durationSec": 18.697,
+      "timestampsFile": "vo/S09.timestamps.json",
+      "wordCount": 20
     },
     "S10": {
       "file": "vo/S10.mp3",
@@ -68,8 +71,9 @@
     },
     "S11": {
       "file": "vo/S11.mp3",
-      "durationSec": 5.982,
-      "timestampsFile": "vo/S11.timestamps.json"
+      "durationSec": 11.638,
+      "timestampsFile": "vo/S11.timestamps.json",
+      "wordCount": 13
     },
     "S12": {
       "file": "vo/S12.mp3",

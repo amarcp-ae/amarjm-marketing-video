@@ -43,8 +43,8 @@ export const S03: React.FC = () => {
             src={ASSETS.screens.S03.salesInvoice}
             variant="phone"
             width={360}
-            height={700}
-            tiltDeg={8}
+            height={760}
+            tiltDeg={3}
             crop={{objectPosition: '50% 30%', scale: 1.2}}
             enterDelay={6}
           />
@@ -54,8 +54,8 @@ export const S03: React.FC = () => {
             src={ASSETS.screens.S03.paymentEntry}
             variant="phone"
             width={360}
-            height={700}
-            tiltDeg={6}
+            height={760}
+            tiltDeg={3}
             crop={{objectPosition: '50% 55%', scale: 1.25}}
             enterDelay={12}
             callout={{label: 'حفظ', x: 180, y: 520, delay: Math.round(1.1 * fps)}}

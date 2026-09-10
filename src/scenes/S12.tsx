@@ -41,9 +41,9 @@ export const S12: React.FC = () => {
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
         <DeviceStage
           src={ASSETS.screens.S04.jewelleryGrossProfit}
-          width={1180}
-          height={720}
-          tiltDeg={7}
+          width={1480}
+          height={760}
+          tiltDeg={3}
           crop={{objectPosition: '48% 38%', scale: 1.4}}
           callout={{label: 'صوت', x: 200, y: 520, delay: Math.round(1.1 * fps)}}
         />

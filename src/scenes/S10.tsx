@@ -41,9 +41,9 @@ export const S10: React.FC = () => {
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
         <DeviceStage
           src={ASSETS.screens.S10.supportDialog}
-          width={1180}
-          height={720}
-          tiltDeg={7}
+          width={1480}
+          height={760}
+          tiltDeg={3}
           crop={{objectPosition: '50% 35%', scale: 1.5}}
           callout={{label: 'الدعم', x: 640, y: 280, delay: Math.round(0.9 * fps)}}
         />

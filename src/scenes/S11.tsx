@@ -1,88 +1,57 @@
 import React from 'react';
-import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
-import {brand} from '../brand';
+import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
 import {DeviceStage} from '../components/DeviceStage';
 import {KineticHeadline} from '../components/KineticHeadline';
 import {SceneShell} from '../components/SceneShell';
-import {ASSETS} from '../lib/assets';
+import {HrCarousel} from '../mockups/HrCarousel';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
 
 const SCENE_ID: SceneId = 'S11';
-
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
 export const S11: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const leftIn = spring({frame: frame - 4, fps, config: {damping: 16, stiffness: 100}});
-  const rightIn = spring({frame: frame - 12, fps, config: {damping: 16, stiffness: 100}});
-  const bounce = spring({
-    frame: frame - Math.round(1.4 * fps),
-    fps,
-    config: {damping: 8, stiffness: 160},
-  });
+  const {durationInFrames: dur, fps} = useVideoConfig();
+  const seg = Math.max(1, Math.floor(dur / 4));
+  const index = Math.min(3, Math.floor(frame / seg));
 
   return (
     <SceneShell sceneId={SCENE_ID}>
       <KineticHeadline
         sceneId={SCENE_ID}
         tokens={[
-          {text: 'فريقك'},
-          {text: 'على'},
-          {text: 'الهاتف', gold: true},
+          {text: 'تطبيقٌ'},
+          {text: 'كاملٌ', gold: true},
+          {text: 'لفريقك'},
         ]}
       />
       <AbsoluteFill
         style={{
           alignItems: 'center',
           justifyContent: 'center',
+          paddingTop: 180,
+          gap: 48,
           flexDirection: 'row',
-          gap: 64,
-          paddingTop: 48,
         }}
       >
-        <div style={{transform: `translateX(${interpolate(leftIn, [0, 1], [-60, 0])}px)`}}>
-          <DeviceStage
-            src={ASSETS.screens.S03.salesInvoice}
-            variant="phone"
-            width={340}
-            height={680}
-            tiltDeg={8}
-            crop={{objectPosition: '50% 25%', scale: 1.2}}
-            enterDelay={6}
-            callout={{label: 'HR', x: 170, y: 120, delay: Math.round(0.8 * fps)}}
-          />
-        </div>
-        <div style={{transform: `translateX(${interpolate(rightIn, [0, 1], [60, 0])}px)`}}>
-          <DeviceStage
-            src={ASSETS.screens.S03.paymentEntry}
-            variant="phone"
-            width={340}
-            height={680}
-            tiltDeg={6}
-            crop={{objectPosition: '50% 40%', scale: 1.2}}
-            enterDelay={12}
-          />
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 110,
-            transform: `translateY(${interpolate(bounce, [0, 1], [-50, 0])}px) scale(${bounce})`,
-            opacity: bounce,
-            padding: '14px 22px',
-            border: `1.5px solid ${brand.colors.gold}`,
-            color: brand.colors.gold,
-            fontFamily: brand.fontFamily,
-            fontWeight: 700,
-            fontSize: 28,
-            background: 'rgba(14,14,18,0.75)',
+        <DeviceStage
+          key={index}
+          variant="phone"
+          width={720}
+          height={980}
+          tiltDeg={3}
+          crop={{scale: 1}}
+          callout={{
+            label: ['حضور', 'مستندات', 'تقييم', 'رواتب'][index],
+            x: 360,
+            y: 200,
+            delay: Math.round(0.35 * fps),
           }}
         >
-          .SIF · WPS
-        </div>
+          <HrCarousel index={index} />
+        </DeviceStage>
       </AbsoluteFill>
     </SceneShell>
   );

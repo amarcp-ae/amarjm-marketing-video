@@ -13,69 +13,72 @@ import {Callout} from './Callout';
 type CropFocus = {
   /** CSS object-position, e.g. "55% 40%" */
   objectPosition?: string;
-  /** Scale ≥ 1 for crop/zoom into the meaningful region. */
+  /** Scale ≥ 1 for crop/zoom into the meaningful region. Never < 1. */
   scale?: number;
 };
 
 type DeviceStageProps = {
-  src: string;
+  src?: string;
   kind?: 'image' | 'video';
   variant?: 'laptop' | 'phone';
+  /** Defaults to ≥70% of 1920 frame width. */
   width?: number;
   height?: number;
-  /** Perspective tilt in degrees (6–8). */
+  /** Perspective tilt — v3 default 3°. */
   tiltDeg?: number;
   crop?: CropFocus;
-  /** Delay (frames) before the device enters from the left. */
   enterDelay?: number;
   callout?: {label: string; x: number; y: number; delay?: number; ringSize?: number};
   children?: React.ReactNode;
 };
 
+const FRAME_W = 1920;
+const MIN_WIDTH = Math.round(FRAME_W * 0.7); // 1344
+
 const resolveSrc = (src: string): string => {
   if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) {
     return src;
   }
-  if (src.startsWith('/')) {
-    return src;
-  }
+  if (src.startsWith('/')) return src;
   return staticFile(src);
 };
 
 /**
- * Cropped/zoomed screen inside a tilted device frame with gold rim light,
- * long shadow, and a slow push-in. Enters from the left.
+ * Large cropped screen (≥70% frame width), 3° tilt, gold rim.
+ * Never downscales media below 1:1 (object-fit cover + scale ≥ 1).
  */
 export const DeviceStage: React.FC<DeviceStageProps> = ({
-  src,
+  src = '',
   kind = 'image',
   variant = 'laptop',
-  width = 1180,
-  height = 720,
-  tiltDeg = 7,
-  crop = {objectPosition: '50% 40%', scale: 1.35},
-  enterDelay = 10,
+  width = MIN_WIDTH,
+  height = 780,
+  tiltDeg = 3,
+  crop = {objectPosition: '50% 40%', scale: 1.5},
+  enterDelay = 8,
   callout,
   children,
 }) => {
   const frame = useCurrentFrame();
   const {durationInFrames} = useVideoConfig();
 
-  const enter = interpolate(frame, [enterDelay, enterDelay + 16], [0, 1], {
+  const isPhone = variant === 'phone';
+  // Default prop is already ≥70% frame width; honor explicit smaller widths for multi-device layouts.
+  const w = width;
+  const enter = interpolate(frame, [enterDelay, enterDelay + 14], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const x = interpolate(enter, [0, 1], [-160, 0]);
+  const x = interpolate(enter, [0, 1], [-80, 0]);
   const opacity = enter;
-  const push = interpolate(frame, [0, Math.max(1, durationInFrames - 1)], [1, 1.06], {
+  const push = interpolate(frame, [0, Math.max(1, durationInFrames - 1)], [1, 1.04], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
-  const isPhone = variant === 'phone';
-  const radius = isPhone ? 36 : 18;
-  const inset = isPhone ? 12 : 16;
-  const scale = Math.max(1, crop.scale ?? 1.25);
+  const radius = isPhone ? 40 : 16;
+  const inset = isPhone ? 14 : 14;
+  const scale = Math.max(1, crop.scale ?? 1.5);
 
   const mediaStyle: React.CSSProperties = {
     width: '100%',
@@ -84,18 +87,19 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
     objectPosition: crop.objectPosition ?? '50% 40%',
     transform: `scale(${scale * push})`,
     transformOrigin: crop.objectPosition ?? '50% 40%',
+    imageRendering: 'auto',
   };
 
   return (
     <div
       style={{
         position: 'relative',
-        width,
+        width: w,
         height,
         opacity,
-        transform: `translateX(${x}px) perspective(1400px) rotateY(${-tiltDeg}deg) rotateX(2deg)`,
+        transform: `translateX(${x}px) perspective(1600px) rotateY(${-tiltDeg}deg)`,
         transformStyle: 'preserve-3d',
-        filter: `drop-shadow(28px 40px 60px rgba(0,0,0,0.65)) drop-shadow(0 0 18px ${brand.colors.gold}44)`,
+        filter: `drop-shadow(24px 36px 50px rgba(0,0,0,0.6)) drop-shadow(0 0 16px ${brand.colors.gold}33)`,
       }}
     >
       <div
@@ -108,7 +112,6 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
           boxShadow: `inset 0 0 0 1px ${brand.colors.gold}33, 0 0 24px ${brand.colors.gold}22`,
         }}
       />
-      {/* Gold rim light */}
       <div
         style={{
           position: 'absolute',
@@ -117,7 +120,7 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
           background: `linear-gradient(120deg, ${brand.colors.gold}55 0%, transparent 28%, transparent 72%, ${brand.colors.gold}33 100%)`,
           pointerEvents: 'none',
           mixBlendMode: 'screen',
-          opacity: 0.55,
+          opacity: 0.45,
         }}
       />
       <div
@@ -126,8 +129,8 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
           top: inset,
           left: inset,
           right: inset,
-          bottom: inset + (isPhone ? 8 : 22),
-          borderRadius: isPhone ? 28 : 10,
+          bottom: inset + (isPhone ? 8 : 18),
+          borderRadius: isPhone ? 28 : 8,
           overflow: 'hidden',
           backgroundColor: '#050507',
         }}
@@ -146,8 +149,8 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
             position: 'absolute',
             left: '18%',
             right: '18%',
-            bottom: 6,
-            height: 12,
+            bottom: 5,
+            height: 10,
             borderRadius: 4,
             background: '#1c1c22',
             borderTop: `1px solid ${brand.colors.gold}55`,
@@ -159,10 +162,12 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
           label={callout.label}
           x={callout.x}
           y={callout.y}
-          delay={callout.delay ?? 24}
-          ringSize={callout.ringSize ?? 68}
+          delay={callout.delay ?? 20}
+          ringSize={callout.ringSize ?? 64}
         />
       ) : null}
     </div>
   );
 };
+
+export const DEVICE_MIN_WIDTH = MIN_WIDTH;

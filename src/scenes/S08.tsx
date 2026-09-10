@@ -52,7 +52,7 @@ export const S08: React.FC = () => {
             src={ASSETS.screens.S08.posClosingEntry}
             width={1200}
             height={740}
-            tiltDeg={7}
+            tiltDeg={3}
             crop={{objectPosition: '50% 40%', scale: 1.4}}
             callout={{label: 'الإقفال', x: 620, y: 280, delay: Math.round(0.9 * fps)}}
           >

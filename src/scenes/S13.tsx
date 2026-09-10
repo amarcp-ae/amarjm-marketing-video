@@ -37,7 +37,7 @@ export const S13: React.FC = () => {
           {text: 'نظامٌ', gold: true},
           {text: 'واحد'},
         ]}
-        settleAfterFrames={40}
+        
       />
       <AbsoluteFill
         style={{

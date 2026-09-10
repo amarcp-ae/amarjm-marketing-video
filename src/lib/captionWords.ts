@@ -51,3 +51,4 @@ const WORDS_BY_SCENE: Record<SceneId, CaptionWord[]> = {
 export const getSceneWords = (sceneId: string): CaptionWord[] => {
   return WORDS_BY_SCENE[sceneId as SceneId] ?? [];
 };
+

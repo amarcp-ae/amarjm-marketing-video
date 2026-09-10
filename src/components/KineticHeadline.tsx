@@ -1,8 +1,8 @@
 import React, {useMemo} from 'react';
-import {interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {brand} from '../brand';
 import {ensureBrandFont} from '../lib/loadFont';
-import {getSceneWords} from '../lib/captionWords';
+import {tokenOnsetFrames, currentSpokenWord} from '../lib/wordTiming';
 
 export type HeadlineToken = {
   text: string;
@@ -11,83 +11,118 @@ export type HeadlineToken = {
 
 type KineticHeadlineProps = {
   tokens: HeadlineToken[];
-  /** Scene id for VO word-onset sync (optional). */
   sceneId?: string;
-  /** Frames before settling to the corner. */
-  settleAfterFrames?: number;
+  debug?: boolean;
 };
 
 /**
- * Large RTL Arabic headline: word-by-word with VO, then settles top-right.
+ * Top-band RTL kinetic headline (max 20% frame height).
+ * Word onsets from ElevenLabs alignment → word map.
  */
 export const KineticHeadline: React.FC<KineticHeadlineProps> = ({
   tokens,
   sceneId,
-  settleAfterFrames = 48,
+  debug = false,
 }) => {
   ensureBrandFont();
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const words = useMemo(() => (sceneId ? getSceneWords(sceneId) : []), [sceneId]);
+  const {fps, height} = useVideoConfig();
+  const bandH = Math.round(height * 0.2);
 
-  const settle = interpolate(frame, [settleAfterFrames, settleAfterFrames + 18], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const onsets = useMemo(
+    () =>
+      sceneId
+        ? tokenOnsetFrames(
+            sceneId,
+            tokens.map((t) => t.text),
+            fps,
+          )
+        : tokens.map((_, i) => i * 5),
+    [sceneId, tokens, fps],
+  );
 
-  const fontSize = interpolate(settle, [0, 1], [88, 42]);
-  const top = interpolate(settle, [0, 1], [120, 56]);
-  const right = interpolate(settle, [0, 1], [120, 64]);
-  const maxWidth = interpolate(settle, [0, 1], [1400, 720]);
+  const spoken = sceneId ? currentSpokenWord(sceneId, frame / fps) : null;
 
   return (
-    <div
-      dir="rtl"
-      lang="ar"
-      style={{
-        position: 'absolute',
-        top,
-        right,
-        maxWidth,
-        zIndex: 40,
-        textAlign: 'right',
-        fontFamily: brand.fontFamily,
-        fontSize,
-        fontWeight: 700,
-        lineHeight: 1.25,
-        color: brand.colors.ivory,
-        pointerEvents: 'none',
-        textShadow: '0 8px 28px rgba(0,0,0,0.55)',
-      }}
-    >
-      {tokens.map((token, i) => {
-        const voStart =
-          words[i] && typeof words[i].startSec === 'number'
-            ? Math.floor(words[i].startSec * fps)
-            : Math.round(i * 5);
-        const appear = interpolate(frame, [voStart, voStart + 5], [0, 1], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-        });
-        const y = interpolate(frame, [voStart, voStart + 8], [18, 0], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-        });
-        return (
-          <span
-            key={`${token.text}-${i}`}
+    <>
+      <div
+        dir="rtl"
+        lang="ar"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: bandH,
+          zIndex: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingInline: 64,
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+          background:
+            'linear-gradient(180deg, rgba(14,14,18,0.75) 0%, rgba(14,14,18,0.35) 70%, transparent 100%)',
+        }}
+      >
+        <div
+          style={{
+            textAlign: 'center',
+            fontFamily: brand.fontFamily,
+            fontSize: 52,
+            fontWeight: 700,
+            lineHeight: 1.25,
+            color: brand.colors.ivory,
+            textShadow: '0 6px 24px rgba(0,0,0,0.55)',
+            maxWidth: '92%',
+          }}
+        >
+          {tokens.map((token, i) => {
+            const voStart = onsets[i] ?? Math.round(i * 5);
+            const appear = interpolate(frame, [voStart, voStart + 4], [0, 1], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            });
+            const y = interpolate(frame, [voStart, voStart + 6], [14, 0], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            });
+            return (
+              <span
+                key={`${token.text}-${i}`}
+                style={{
+                  display: 'inline-block',
+                  marginInline: 7,
+                  opacity: appear,
+                  transform: `translateY(${y}px)`,
+                  color: token.gold ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
+                {token.text}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      {debug && spoken ? (
+        <AbsoluteFill style={{pointerEvents: 'none', zIndex: 90}}>
+          <div
             style={{
-              display: 'inline-block',
-              marginInline: 8,
-              opacity: appear,
-              transform: `translateY(${y}px)`,
-              color: token.gold ? brand.colors.gold : brand.colors.ivory,
+              position: 'absolute',
+              left: 24,
+              bottom: 24,
+              background: 'rgba(0,0,0,0.75)',
+              color: '#7CFF7C',
+              fontFamily: 'monospace',
+              fontSize: 18,
+              padding: '8px 14px',
+              borderRadius: 6,
             }}
           >
-            {token.text}
-          </span>
-        );
-      })}
-    </div>
+            {spoken.word} @ {spoken.startSec.toFixed(3)}s
+          </div>
+        </AbsoluteFill>
+      ) : null}
+    </>
   );
 };
