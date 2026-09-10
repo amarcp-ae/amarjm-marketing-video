@@ -541,7 +541,7 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
 
   // "Create POS Opening Entry" means no open shift — do not submit/create one.
   const openingEntry = page.locator(
-    '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry")',
+    '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry"), .modal.show:has-text("Opening Entry")',
   );
   if (
     (await openingEntry.count()) > 0 &&
@@ -613,40 +613,74 @@ const findPosRoute = async (
     return score(a) - score(b);
   });
 
+  const openingEntryLocator = (p: Page) =>
+    p.locator(
+      '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry"), .modal.show:has-text("Opening Entry")',
+    );
+
   for (const probe of candidates) {
     try {
-      const res = await page.goto(`${root}${probe}`, {
+      let res = await page.goto(`${root}${probe}`, {
         waitUntil: 'domcontentloaded',
         timeout: 45_000,
       });
-      const status = res?.status() ?? 0;
+      let status = res?.status() ?? 0;
       await page.waitForTimeout(1_500);
       await dismissCompanyPicker(page);
+      // Company Continue often lands on desk — re-open POS after dismiss.
+      if (!page.url().includes(probe.replace(/^\//, ''))) {
+        res = await page.goto(`${root}${probe}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 45_000,
+        });
+        status = res?.status() ?? status;
+        await page.waitForTimeout(1_500);
+        await dismissCompanyPicker(page);
+      }
+
+      // Wait for barcode input OR Opening Entry modal (shift required).
+      let hasBarcode = false;
+      let openingEntryVisible = false;
+      const deadline = Date.now() + 20_000;
+      while (Date.now() < deadline) {
+        hasBarcode = await pageHasBarcodeInput(page);
+        openingEntryVisible = await openingEntryLocator(page)
+          .first()
+          .isVisible()
+          .catch(() => false);
+        const bodySnap = (
+          (await page
+            .locator('body')
+            .innerText()
+            .catch(() => '')) || ''
+        ).slice(0, 500);
+        if (hasBarcode || openingEntryVisible || /opening entry/i.test(bodySnap)) {
+          if (!openingEntryVisible && /opening entry/i.test(bodySnap)) {
+            openingEntryVisible = true;
+          }
+          break;
+        }
+        await page.waitForTimeout(1_000);
+      }
+
       const body = (
         (await page
           .locator('body')
           .innerText()
           .catch(() => '')) || ''
-      ).slice(0, 240);
-      const hasBarcode = await pageHasBarcodeInput(page);
-      const openingEntryVisible = await page
-        .locator(
-          '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry")',
-        )
-        .first()
-        .isVisible()
-        .catch(() => false);
-      const note = `${probe} status=${status} barcodeInput=${hasBarcode} openingEntry=${openingEntryVisible} body=${body.replace(/\s+/g, ' ').slice(0, 120)}`;
+      ).slice(0, 400);
+      const openingEntryInBody = /opening entry/i.test(body);
+      const note = `${probe} status=${status} barcodeInput=${hasBarcode} openingEntry=${openingEntryVisible || openingEntryInBody} body=${body.replace(/\s+/g, ' ').slice(0, 120)}`;
       discoveredPosProbeNotes.push(note);
       console.log(`POS probe: ${note}`);
       // Real POS: barcode input present, OR Opening Entry modal (shift required — still the POS page).
       if (
         status < 400 &&
-        (hasBarcode || openingEntryVisible) &&
+        (hasBarcode || openingEntryVisible || openingEntryInBody) &&
         !/not permitted|no permission|login/i.test(body)
       ) {
         discoveredPosRoute = probe;
-        if (openingEntryVisible && !hasBarcode) {
+        if ((openingEntryVisible || openingEntryInBody) && !hasBarcode) {
           discoveredShiftNeeded = true;
           console.log(`POS route selected (Opening Entry / shift required): ${probe}`);
         } else {
