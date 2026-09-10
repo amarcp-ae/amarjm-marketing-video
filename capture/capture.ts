@@ -201,7 +201,11 @@ const dismissCompanyPicker = async (page: Page): Promise<void> => {
   await page.waitForTimeout(500);
 };
 
-const prepareForShot = async (page: Page): Promise<void> => {
+const prepareForShot = async (
+  page: Page,
+  opts: {dismissOverlays?: boolean} = {},
+): Promise<void> => {
+  const dismissOverlays = opts.dismissOverlays !== false;
   await dismissCompanyPicker(page);
   await page.addStyleTag({path: HIDE_CSS_PATH});
   await hideAmarcpEmailNodes(page);
@@ -210,18 +214,29 @@ const prepareForShot = async (page: Page): Promise<void> => {
   } catch {
     // Desk keeps websockets open; fall through to the fixed settle wait.
   }
-  // Close Link/Awesomplete dropdowns left open by set_filter_value / typing.
-  await page.keyboard.press('Escape').catch(() => undefined);
-  await page.waitForTimeout(200);
-  await page.keyboard.press('Escape').catch(() => undefined);
-  await page.waitForTimeout(400);
+  if (dismissOverlays) {
+    // Close Link/Awesomplete dropdowns left open by set_filter_value / typing.
+    // Skip for POS payment — Escape backs out of Checkout.
+    await page.keyboard.press('Escape').catch(() => undefined);
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Escape').catch(() => undefined);
+    await page.waitForTimeout(400);
+  } else {
+    await page.waitForTimeout(400);
+  }
 };
 
 const capturePng = async (
   page: Page,
-  opts: {scene: string; relativeFile: string; sourceUrl?: string},
+  opts: {
+    scene: string;
+    relativeFile: string;
+    sourceUrl?: string;
+    /** When false, do not press Escape (keeps POS payment / modal UI). */
+    dismissOverlays?: boolean;
+  },
 ): Promise<void> => {
-  await prepareForShot(page);
+  await prepareForShot(page, {dismissOverlays: opts.dismissOverlays});
   const outPath = path.join(SCREENS_DIR, opts.relativeFile);
   await mkdir(path.dirname(outPath), {recursive: true});
   await page.screenshot({path: outPath, fullPage: false});
@@ -1089,28 +1104,55 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
 };
 
 const openPosPayment = async (page: Page): Promise<boolean> => {
-  // Prefer the visible cart checkout control (numpad copy is often aria-hidden).
-  const checkout = page
-    .locator('.cart-totals-section .checkout-btn, div.checkout-btn:visible, .checkout-btn')
-    .first();
-  if ((await checkout.count()) === 0) {
-    return false;
+  // Native .checkout-btn click is flaky in headless; toggle POS components directly.
+  const opened = await page.evaluate(() => {
+    const curPos = (
+      window as unknown as {
+        cur_pos?: {
+          toggle_components?: (showItems: boolean) => void;
+          payment?: {
+            toggle_component?: (show: boolean) => void;
+            checkout?: () => void;
+          };
+          cart?: {
+            toggle_component?: (show: boolean) => void;
+            highlight_checkout_btn?: () => void;
+          };
+          item_selector?: {toggle_component?: (show: boolean) => void};
+          frm?: {doc?: {items?: unknown[]}};
+        };
+      }
+    ).cur_pos;
+    if (!curPos) return {ok: false, reason: 'no cur_pos'};
+    const itemCount = curPos.frm?.doc?.items?.length ?? 0;
+    if (!itemCount) return {ok: false, reason: 'empty cart', itemCount};
+    curPos.cart?.highlight_checkout_btn?.();
+    if (typeof curPos.toggle_components === 'function') {
+      curPos.toggle_components(false);
+    } else {
+      curPos.item_selector?.toggle_component?.(false);
+      curPos.cart?.toggle_component?.(false);
+      curPos.payment?.toggle_component?.(true);
+    }
+    // Some builds expose payment.checkout() as the click handler.
+    curPos.payment?.checkout?.();
+    const pay = document.querySelector('.payment-container') as HTMLElement | null;
+    const visible = Boolean(pay && getComputedStyle(pay).display !== 'none');
+    return {ok: visible, reason: visible ? 'toggled' : 'still hidden', itemCount};
+  });
+  console.log('S07 openPosPayment', opened);
+  if (!opened.ok) {
+    const checkout = page.locator('.cart-totals-section .checkout-btn, div.checkout-btn').first();
+    if ((await checkout.count()) > 0) {
+      await checkout.click({force: true}).catch(() => undefined);
+      await page.waitForTimeout(800);
+    }
   }
-  await checkout.click({force: true});
-  try {
-    await page
-      .getByText(/Payment Method|Complete Order|Paid Amount/i)
-      .first()
-      .waitFor({
-        state: 'visible',
-        timeout: 10_000,
-      });
-    return true;
-  } catch {
-    // Payment pane may mount without Playwright visibility; accept DOM presence.
-    const hasPayment = await page.locator('.payment-container').count();
-    return hasPayment > 0;
-  }
+  const visible = await page.evaluate(() => {
+    const pay = document.querySelector('.payment-container') as HTMLElement | null;
+    return Boolean(pay && getComputedStyle(pay).display !== 'none');
+  });
+  return visible;
 };
 
 const captureS07 = async (
@@ -1172,14 +1214,23 @@ const captureS07 = async (
         await appendNote('S07', `Barcode scan did not add a cart line (${barcodeValue})`);
       }
       await vp.waitForTimeout(1_500);
-      await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-scan.png'});
+      // Do not press Escape here — it backs out of POS cart state.
+      await capturePng(vp, {
+        scene: 'S07',
+        relativeFile: 'S07/pos-scan.png',
+        dismissOverlays: false,
+      });
 
       // Payment screen — do not submit Complete Order.
       if (scanned) {
         const paid = await openPosPayment(vp);
         if (paid) {
           await vp.waitForTimeout(800);
-          await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-payment-dialog.png'});
+          await capturePng(vp, {
+            scene: 'S07',
+            relativeFile: 'S07/pos-payment-dialog.png',
+            dismissOverlays: false,
+          });
         } else {
           await appendNote('S07', 'Checkout/payment screen did not open');
         }
