@@ -53,6 +53,8 @@ const HIDE_CSS_PATH = path.join(__dirname, 'hide.css');
 const DESKTOP_VIEWPORT: Viewport = {width: 1920, height: 1080};
 const VIDEO_SIZE: Viewport = {width: 1920, height: 1080};
 const COMPANY_DUBAI = 'Al Noor Jewellery - Dubai';
+const TARGET_ITEM_CODE = 'gold-bangle-22k';
+const TARGET_BARCODE = '0340000001';
 
 const desktopContextOptions = {
   viewport: DESKTOP_VIEWPORT,
@@ -65,6 +67,8 @@ const desktopContextOptions = {
 let discoveredPosRoute: string | null = null;
 let discoveredVatReportName: string | null = null;
 let discoveredBarcodeField: string | null = null;
+let discoveredShiftNeeded: boolean = false;
+let discoveredPosProbeNotes: string[] = [];
 
 /* ------------------------------ Utilities -------------------------------- */
 
@@ -152,7 +156,48 @@ const hideAmarcpEmailNodes = async (page: Page): Promise<void> => {
   });
 };
 
+/** Dismiss multi-company selector shown after login / on desk. */
+const dismissCompanyPicker = async (page: Page): Promise<void> => {
+  const modal = page.locator(
+    '.modal.show:has-text("Select Company"), .modal.show:has-text("Choose Company"), .modal.show:has-text("Company")',
+  );
+  if (
+    (await modal.count()) === 0 ||
+    !(await modal
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    return;
+  }
+  console.log('Company picker detected — selecting Al Noor Jewellery - Dubai');
+  const dubai = modal.first().getByText(COMPANY_DUBAI, {exact: false});
+  if ((await dubai.count()) > 0) {
+    await dubai
+      .first()
+      .click({timeout: 5_000})
+      .catch(() => undefined);
+  }
+  const cont = modal
+    .first()
+    .locator(
+      'button:has-text("Continue"), button:has-text("Select"), button.btn-primary, button:has-text("OK")',
+    );
+  if ((await cont.count()) > 0) {
+    await cont
+      .first()
+      .click({timeout: 5_000})
+      .catch(() => undefined);
+  }
+  await modal
+    .first()
+    .waitFor({state: 'hidden', timeout: 15_000})
+    .catch(() => undefined);
+  await page.waitForTimeout(500);
+};
+
 const prepareForShot = async (page: Page): Promise<void> => {
+  await dismissCompanyPicker(page);
   await page.addStyleTag({path: HIDE_CSS_PATH});
   await hideAmarcpEmailNodes(page);
   try {
@@ -299,6 +344,24 @@ const withVideoPage = async (
   }
 };
 
+const setCompanyDefault = async (context: BrowserContext, baseUrl: string): Promise<void> => {
+  const root = baseUrl.replace(/\/$/, '');
+  const attempts: Array<{method: string; form: Record<string, string>}> = [
+    {method: 'frappe.client.set_default', form: {key: 'company', value: COMPANY_DUBAI}},
+    {method: 'frappe.defaults.set_user_default', form: {key: 'company', value: COMPANY_DUBAI}},
+  ];
+  for (const attempt of attempts) {
+    const res = await context.request.post(`${root}/api/method/${attempt.method}`, {
+      form: attempt.form,
+    });
+    if (res.ok()) {
+      console.log(`Set default company via ${attempt.method} -> ${COMPANY_DUBAI}`);
+      return;
+    }
+    console.warn(`${attempt.method} failed: ${res.status()} ${(await res.text()).slice(0, 160)}`);
+  }
+};
+
 /* --------------------------- Report / POS helpers ------------------------ */
 
 const setReportFilters = async (page: Page, filters: Record<string, string>): Promise<void> => {
@@ -341,48 +404,192 @@ const setReportFilters = async (page: Page, filters: Record<string, string>): Pr
 };
 
 const waitForDatatable = async (page: Page): Promise<void> => {
-  // UNVERIFIED: .datatable / .dt-scrollable — Frappe Query Report grid
-  const grid = page.locator('.datatable, .dt-scrollable, .report-wrapper .dt-row');
-  await grid
-    .first()
-    .waitFor({state: 'visible', timeout: 45_000})
-    .catch(() => console.warn('Datatable did not become visible in time'));
-  await page.waitForTimeout(500);
-};
-
-const findPosRoute = async (page: Page, baseUrl: string): Promise<string | null> => {
-  await gotoApp(page, baseUrl, '/app');
-  await prepareForShot(page);
-
-  // UNVERIFIED: workspace sidebar link markup
-  const fromSidebar = await page.evaluate(() => {
-    const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/app/"]'));
-    const hit = anchors.find((a) => /\/app\/[^"'#]*pos/i.test(a.getAttribute('href') ?? ''));
-    return hit?.getAttribute('href') ?? null;
-  });
-  if (fromSidebar) {
-    const pathOnly = fromSidebar.replace(/^https?:\/\/[^/]+/i, '');
-    discoveredPosRoute = pathOnly;
-    console.log(`POS route from sidebar: ${pathOnly}`);
-    return pathOnly;
-  }
-
-  const probes = ['/app/jewellery-pos', '/app/pos'];
-  for (const probe of probes) {
-    const res = await page.goto(`${baseUrl.replace(/\/$/, '')}${probe}`, {
-      waitUntil: 'domcontentloaded',
+  // Wait for actual data rows, not merely the grid container.
+  try {
+    await page.waitForFunction(() => document.querySelectorAll('.dt-row').length > 0, undefined, {
       timeout: 30_000,
     });
-    const status = res?.status() ?? 0;
-    const url = page.url();
-    if (status < 400 && !/login|404|not.?found/i.test(url) && /pos/i.test(url)) {
-      discoveredPosRoute = probe;
-      console.log(`POS route from probe: ${probe}`);
-      return probe;
+  } catch {
+    console.warn('Datatable .dt-row count stayed 0 within 30s');
+  }
+  await page.waitForTimeout(400);
+};
+
+const setQueryReportFilter = async (
+  page: Page,
+  fieldname: string,
+  value: string,
+): Promise<void> => {
+  const ok = await page.evaluate(
+    ({fieldname, value}) => {
+      const qr = (
+        window as unknown as {
+          frappe?: {query_report?: {set_filter_value?: (f: string, v: string) => void}};
+        }
+      ).frappe?.query_report;
+      if (qr && typeof qr.set_filter_value === 'function') {
+        qr.set_filter_value(fieldname, value);
+        return true;
+      }
+      return false;
+    },
+    {fieldname, value},
+  );
+  if (!ok) {
+    console.warn(`frappe.query_report.set_filter_value unavailable for ${fieldname}`);
+  }
+  await page.waitForTimeout(400);
+};
+
+/** Select Dubai company/profile if prompted. Do NOT open a shift. Returns false if shift lock blocks. */
+const preparePosDesk = async (page: Page): Promise<boolean> => {
+  await dismissCompanyPicker(page);
+
+  // UNVERIFIED: jpos profile select markup
+  const profileDialog = page.locator(
+    '.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile"), .modal.show:has-text("POS Profile")',
+  );
+  if (
+    (await profileDialog.count()) > 0 &&
+    (await profileDialog
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    console.log('S07: POS profile dialog detected — preferring Dubai profile');
+    const dubai = profileDialog.first().getByText(/Dubai/i);
+    if ((await dubai.count()) > 0) {
+      await dubai
+        .first()
+        .click({timeout: 5_000})
+        .catch(() => undefined);
+    } else {
+      const choice = profileDialog
+        .first()
+        .locator(
+          '.list-item, .pos-profile-item, .modal-body button, .modal-body .list-row, .modal-body [data-name], .modal-body .card',
+        );
+      if ((await choice.count()) > 0) {
+        await choice
+          .first()
+          .click({timeout: 5_000})
+          .catch(() => undefined);
+      }
+    }
+    const confirm = profileDialog
+      .first()
+      .locator(
+        'button:has-text("Continue"), button:has-text("Select"), button:has-text("OK"), button.btn-primary, button:has-text("Start")',
+      );
+    if ((await confirm.count()) > 0) {
+      await confirm
+        .first()
+        .click({timeout: 5_000})
+        .catch(() => undefined);
+    }
+    await profileDialog
+      .first()
+      .waitFor({state: 'hidden', timeout: 15_000})
+      .catch(() => undefined);
+    await page.waitForTimeout(800);
+  }
+
+  await page
+    .locator('#freeze.modal-backdrop, .modal-backdrop.fade.in, .freeze-message-container')
+    .first()
+    .waitFor({state: 'hidden', timeout: 20_000})
+    .catch(() => undefined);
+
+  const shiftLock = page.locator(
+    '.jpos-shift-lock-overlay, .jpos-shift-lock-overlay.is-visible, [class*="shift-lock"]',
+  );
+  if (
+    (await shiftLock.count()) > 0 &&
+    (await shiftLock
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    discoveredShiftNeeded = true;
+    console.warn('S07: POS requires an open shift and none is open — not creating one');
+    return false;
+  }
+  return true;
+};
+
+const pageHasBarcodeInput = async (page: Page): Promise<boolean> => {
+  const barcodeInput = page.locator(
+    'input.jpos-search-input, input[data-fieldname="barcode"], input[placeholder*="Barcode" i], input[placeholder*="barcode" i], input[placeholder*="Item code" i], input[placeholder*="serial" i], .pos-barcode input, input.barcode, #barcode, input[name="barcode"]',
+  );
+  return (await barcodeInput.count()) > 0;
+};
+
+const findPosRoute = async (
+  page: Page,
+  context: BrowserContext,
+  baseUrl: string,
+): Promise<string | null> => {
+  const root = baseUrl.replace(/\/$/, '');
+  discoveredPosProbeNotes = [];
+
+  // 1) Page doctype search
+  const filters = JSON.stringify([['name', 'like', '%pos%']]);
+  const fields = JSON.stringify(['name', 'title', 'page_name']);
+  const apiUrl = `${root}/api/resource/Page?filters=${encodeURIComponent(filters)}&limit_page_length=50&fields=${encodeURIComponent(fields)}`;
+  const pageRes = await context.request.get(apiUrl);
+  const candidates: string[] = ['/app/point-of-sale'];
+  if (pageRes.ok()) {
+    const json = (await pageRes.json()) as FrappeListResponse<{name?: string; page_name?: string}>;
+    for (const row of json.data ?? []) {
+      const slug = (row.page_name || row.name || '').toString().trim();
+      if (!slug) continue;
+      const route = `/app/${slug}`.replace(/\/app\/\/+/, '/app/');
+      if (!candidates.includes(route)) candidates.push(route);
+      discoveredPosProbeNotes.push(`Page:${slug}`);
+    }
+  } else {
+    console.warn(`Page POS lookup HTTP ${pageRes.status()}`);
+  }
+
+  // Prefer jewellery-ish POS routes first
+  candidates.sort((a, b) => {
+    const score = (r: string) =>
+      (/jewellery|jewelry|jpos/i.test(r) ? 0 : 1) + (/point-of-sale/i.test(r) ? 0 : 2);
+    return score(a) - score(b);
+  });
+
+  for (const probe of candidates) {
+    try {
+      const res = await page.goto(`${root}${probe}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 45_000,
+      });
+      const status = res?.status() ?? 0;
+      await page.waitForTimeout(1_500);
+      await dismissCompanyPicker(page);
+      const body = (
+        (await page
+          .locator('body')
+          .innerText()
+          .catch(() => '')) || ''
+      ).slice(0, 240);
+      const hasBarcode = await pageHasBarcodeInput(page);
+      const note = `${probe} status=${status} barcodeInput=${hasBarcode} body=${body.replace(/\s+/g, ' ').slice(0, 120)}`;
+      discoveredPosProbeNotes.push(note);
+      console.log(`POS probe: ${note}`);
+      if (status < 400 && hasBarcode && !/not permitted|no permission|login/i.test(body)) {
+        discoveredPosRoute = probe;
+        console.log(`POS route selected (barcode input present): ${probe}`);
+        return probe;
+      }
+    } catch (err) {
+      discoveredPosProbeNotes.push(
+        `${probe} error=${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
-  console.warn('POS route not found');
+  console.warn('POS route with barcode/scan input not found');
   return null;
 };
 
@@ -426,6 +633,7 @@ const resolvePieceBarcode = (
   };
 
   for (const field of [
+    'piece_barcode_display',
     'custom_piece_barcode',
     'piece_barcode',
     'barcode',
@@ -501,15 +709,19 @@ const captureS03 = async (browser: Browser, cookies: Cookie[], baseUrl: string):
 };
 
 const captureS04 = async (page: Page, baseUrl: string): Promise<void> => {
+  await dismissCompanyPicker(page);
   await gotoApp(page, baseUrl, '/app/query-report/Jewellery Gross Profit');
+  await dismissCompanyPicker(page);
   await prepareForShot(page);
   await setReportFilters(page, {
     // UNVERIFIED fieldnames for Jewellery Gross Profit
-    company: '',
+    company: COMPANY_DUBAI,
     from_date: daysAgoIso(90),
     to_date: todayIso(),
   });
+  await setQueryReportFilter(page, 'company', COMPANY_DUBAI);
   await waitForDatatable(page);
+  await dismissCompanyPicker(page);
   await capturePng(page, {
     scene: 'S04',
     relativeFile: 'S04/jewellery-gross-profit.png',
@@ -517,27 +729,56 @@ const captureS04 = async (page: Page, baseUrl: string): Promise<void> => {
 };
 
 const captureS05 = async (page: Page, baseUrl: string, context: BrowserContext): Promise<void> => {
-  const item = await firstDoc(
+  await dismissCompanyPicker(page);
+  // Prefer the known metal SKU used for marketing stills.
+  let item = await firstDoc(
     context,
     baseUrl,
     'Item',
-    [['item_division', '=', 'Metal']],
+    [
+      ['item_division', '=', 'Metal'],
+      ['item_code', '=', TARGET_ITEM_CODE],
+    ],
     ['name', 'item_code', 'item_name'],
   );
   if (!item) {
-    await appendNote('S05', 'No Item with item_division=Metal');
+    item = await firstDoc(
+      context,
+      baseUrl,
+      'Item',
+      [['name', '=', TARGET_ITEM_CODE]],
+      ['name', 'item_code', 'item_name'],
+    );
+  }
+  if (!item) {
+    await appendNote('S05', `No Item ${TARGET_ITEM_CODE} with item_division=Metal`);
     return;
   }
 
   await gotoApp(page, baseUrl, `/app/item/${encodeURIComponent(item.name)}`);
+  await dismissCompanyPicker(page);
   await capturePng(page, {scene: 'S05', relativeFile: 'S05/item-metal.png'});
 
-  await gotoApp(page, baseUrl, '/app/query-report/Stock Balance');
+  const itemCode = typeof item.raw.item_code === 'string' ? item.raw.item_code : item.name;
+  await gotoApp(
+    page,
+    baseUrl,
+    `/app/query-report/Stock Balance?item_code=${encodeURIComponent(itemCode)}`,
+  );
+  await dismissCompanyPicker(page);
   await prepareForShot(page);
-  await setReportFilters(page, {
-    // UNVERIFIED fieldnames for Stock Balance
-    item_code: item.name,
-  });
+  await setQueryReportFilter(page, 'item_code', itemCode);
+  await setReportFilters(page, {item_code: itemCode});
+  // Refresh report if a button exists
+  const refresh = page.locator(
+    'button:has-text("Refresh"), button:has-text("Show Report"), .btn-primary:has-text("Refresh")',
+  );
+  if ((await refresh.count()) > 0) {
+    await refresh
+      .first()
+      .click()
+      .catch(() => undefined);
+  }
   await waitForDatatable(page);
   await capturePng(page, {scene: 'S05', relativeFile: 'S05/stock-balance.png'});
 };
@@ -618,31 +859,30 @@ const captureS07 = async (
   baseUrl: string,
   context: BrowserContext,
 ): Promise<void> => {
-  const posRoute = await findPosRoute(page, baseUrl);
+  await dismissCompanyPicker(page);
+  const posRoute = await findPosRoute(page, context, baseUrl);
   if (!posRoute) {
-    await appendNote('S07', 'POS route not found (sidebar scan + probes failed)');
+    await appendNote(
+      'S07',
+      `POS route with barcode input not found. Probes: ${discoveredPosProbeNotes.join(' | ')}`,
+    );
     return;
   }
 
-  const itemList = await firstDoc(
-    context,
-    baseUrl,
-    'Item',
-    [],
-    ['name', 'item_code', 'barcode', 'custom_piece_barcode', 'piece_barcode'],
+  // Prefer the known piece barcode; fall back to Item doc resolution.
+  let barcodeValue = TARGET_BARCODE;
+  discoveredBarcodeField = 'barcodes[0].barcode';
+  const itemDoc = await getDoc(context, baseUrl, 'Item', TARGET_ITEM_CODE);
+  if (itemDoc) {
+    const resolved = resolvePieceBarcode(itemDoc);
+    if (resolved) {
+      barcodeValue = resolved.value;
+      discoveredBarcodeField = resolved.field;
+    }
+  }
+  console.log(
+    `S07 barcode field: ${discoveredBarcodeField} = ${barcodeValue} (item ${TARGET_ITEM_CODE})`,
   );
-  if (!itemList) {
-    await appendNote('S07', 'No Item available for barcode scan');
-    return;
-  }
-  const full = (await getDoc(context, baseUrl, 'Item', itemList.name)) ?? itemList.raw;
-  const barcode = resolvePieceBarcode(full);
-  if (!barcode) {
-    await appendNote('S07', `Item ${itemList.name} has no usable barcode field`);
-    return;
-  }
-  discoveredBarcodeField = barcode.field;
-  console.log(`S07 barcode field: ${barcode.field} = ${barcode.value}`);
 
   await withVideoPage(
     browser,
@@ -650,41 +890,52 @@ const captureS07 = async (
     async (vp) => {
       await gotoApp(vp, baseUrl, posRoute);
       await prepareForShot(vp);
+      const ready = await preparePosDesk(vp);
+      if (!ready) {
+        await appendNote('S07', 'POS requires an open shift and none is open — not creating one');
+        await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-shift-required.png'});
+        return;
+      }
       await vp.waitForTimeout(1_000);
 
-      // UNVERIFIED: POS barcode input selectors
+      // UNVERIFIED: POS barcode / search input selectors
       const barcodeInput = vp.locator(
-        'input[data-fieldname="barcode"], input[placeholder*="Barcode" i], input[placeholder*="barcode" i], .pos-barcode input, input.barcode, #barcode, input[name="barcode"]',
+        'input.jpos-search-input, input[data-fieldname="barcode"], input[placeholder*="Barcode" i], input[placeholder*="barcode" i], input[placeholder*="Item code" i], input[placeholder*="serial" i], .pos-barcode input, input.barcode, #barcode, input[name="barcode"]',
       );
       if ((await barcodeInput.count()) === 0) {
-        console.warn('S07: barcode input not found — recording idle POS only');
-        await vp.waitForTimeout(2_000);
+        console.warn('S07: barcode input not found after POS route selection');
+        await appendNote('S07', `Barcode input missing on ${posRoute}`);
+        await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-no-barcode-input.png'});
         return;
       }
 
-      await barcodeInput.first().click({timeout: 5_000});
+      await barcodeInput.first().click({timeout: 10_000, force: true});
       await barcodeInput.first().fill('');
-      await barcodeInput.first().pressSequentially(barcode.value, {delay: 40});
+      await barcodeInput.first().pressSequentially(barcodeValue, {delay: 40});
       await vp.keyboard.press('Enter');
 
-      // UNVERIFIED: cart / items line appearance
       const line = vp.locator(
-        '.cart-items .cart-item, .pos-bill-item, .pos-item-row, .cart-container .item-row, tr.pos-bill-row',
+        '.cart-items .cart-item, .pos-bill-item, .pos-item-row, .cart-container .item-row, tr.pos-bill-row, .jpos-cart-item, .jpos-item-row',
       );
       await line
         .first()
         .waitFor({state: 'visible', timeout: 15_000})
         .catch(() => console.warn('S07: cart line did not appear after Enter'));
       await vp.waitForTimeout(2_000);
+      await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-scan.png'});
     },
     'S07-pos-scan.webm',
     'S07',
   );
 
+  // Payment dialog only if desk is ready (no shift lock)
   await gotoApp(page, baseUrl, posRoute);
   await prepareForShot(page);
+  const ready = await preparePosDesk(page);
+  if (!ready) {
+    return;
+  }
 
-  // UNVERIFIED: Pay / Payment buttons on jewellery POS
   const payBtn = page.locator(
     'button:has-text("Pay"), button:has-text("Payment"), .pos-pay-btn, button.pay-amount, [data-action="pay"]',
   );
@@ -694,7 +945,6 @@ const captureS07 = async (
       .click()
       .catch(() => undefined);
     await page.waitForTimeout(800);
-    // UNVERIFIED: payment modal
     const dialog = page.locator(
       '.modal.show, .payment-dialog, .pos-payment, [data-modal="payment"], .frappe-modal',
     );
@@ -707,15 +957,6 @@ const captureS07 = async (
     ) {
       await capturePng(page, {scene: 'S07', relativeFile: 'S07/pos-payment-dialog.png'});
       await page.keyboard.press('Escape').catch(() => undefined);
-      const close = page.locator(
-        '.modal.show .btn-modal-close, .modal.show button:has-text("Close"), .modal.show .close',
-      );
-      if ((await close.count()) > 0) {
-        await close
-          .first()
-          .click()
-          .catch(() => undefined);
-      }
     } else {
       await appendNote('S07', 'Payment dialog did not open (or not visible)');
     }
@@ -774,18 +1015,47 @@ const captureS09 = async (page: Page, baseUrl: string, context: BrowserContext):
   if (customer) {
     await gotoApp(page, baseUrl, `/app/customer/${encodeURIComponent(customer.name)}`);
     await prepareForShot(page);
-    // UNVERIFIED: KYC section heading / tab
-    const kyc = page.locator(
-      'text=/KYC/i, .form-section:has-text("KYC"), [data-fieldname*="kyc" i], .section-head:has-text("KYC")',
+    // Expand collapsed KYC section, then scroll into view
+    await dismissCompanyPicker(page);
+    const kycTab = page.locator(
+      '.form-tabs .nav-link:has-text("KYC"), .nav-link:has-text("Corporate KYC"), button:has-text("Corporate KYC")',
     );
-    if ((await kyc.count()) > 0) {
-      await kyc
+    if ((await kycTab.count()) > 0) {
+      await kycTab
         .first()
-        .scrollIntoViewIfNeeded()
+        .click()
         .catch(() => undefined);
       await page.waitForTimeout(400);
+    }
+    // Frappe collapsible section heads: click when collapsed so KYC fields are visible
+    const kycHead = page.locator(
+      '.form-section .section-head:has-text("KYC"), .section-head:has-text("KYC"), .collapsible-section .section-head:has-text("KYC")',
+    );
+    if ((await kycHead.count()) > 0) {
+      const head = kycHead.first();
+      // Always click the section head — expands if collapsed; harmless if already open
+      await head.click({timeout: 5_000}).catch(() => undefined);
+      await page.waitForTimeout(400);
+      await head.scrollIntoViewIfNeeded().catch(() => undefined);
+      // Also scroll a KYC field into view if present
+      const kycField = page.locator(
+        '[data-fieldname*="kyc"], [data-fieldname="custom_kyc_risk_rating"]',
+      );
+      if ((await kycField.count()) > 0) {
+        await kycField
+          .first()
+          .scrollIntoViewIfNeeded()
+          .catch(() => undefined);
+      }
+      await page.waitForTimeout(500);
     } else {
-      console.warn('S09: KYC section not found — capturing customer form as-is');
+      const kycText = page.getByText(/KYC/i).first();
+      if ((await kycText.count()) > 0) {
+        await kycText.click().catch(() => undefined);
+        await kycText.scrollIntoViewIfNeeded().catch(() => undefined);
+      } else {
+        console.warn('S09: KYC section not found — capturing customer form as-is');
+      }
     }
     await capturePng(page, {scene: 'S09', relativeFile: 'S09/customer-kyc.png'});
   } else {
@@ -818,7 +1088,10 @@ const captureS10 = async (page: Page, baseUrl: string): Promise<void> => {
 };
 
 const captureS12 = async (page: Page, baseUrl: string): Promise<void> => {
+  await dismissCompanyPicker(page);
   await gotoApp(page, baseUrl, '/app/home');
+  await dismissCompanyPicker(page);
+  await prepareForShot(page);
   await capturePng(page, {scene: 'S12', relativeFile: 'S12/home.png'});
 };
 
@@ -826,37 +1099,74 @@ const captureS12 = async (page: Page, baseUrl: string): Promise<void> => {
 
 async function main(): Promise<void> {
   const baseUrl = requireEnv('CAPTURE_BASE_URL').replace(/\/$/, '');
+  const only = new Set(
+    (process.env.CAPTURE_SCENES || '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+  );
+  const should = (scene: string) => only.size === 0 || only.has(scene);
 
   await mkdir(SCREENS_DIR, {recursive: true});
   await mkdir(VIDEO_DIR, {recursive: true});
-  await writeFile(MANIFEST_PATH, '[]\n', 'utf8');
+
+  // Partial re-runs keep prior assets; replace only selected scene rows.
+  let existing: CaptureRecord[] = [];
+  if (only.size > 0) {
+    try {
+      existing = JSON.parse(await readFile(MANIFEST_PATH, 'utf8')) as CaptureRecord[];
+      if (!Array.isArray(existing)) existing = [];
+    } catch {
+      existing = [];
+    }
+    existing = existing.filter((e) => !only.has(e.scene));
+    await writeFile(MANIFEST_PATH, `${JSON.stringify(existing, null, 2)}\n`, 'utf8');
+  } else {
+    await writeFile(MANIFEST_PATH, '[]\n', 'utf8');
+  }
 
   let browser: Browser | null = null;
   try {
     browser = await chromium.launch({headless: true});
     const context = await browser.newContext({...desktopContextOptions});
     await login(context, baseUrl);
+    await setCompanyDefault(context, baseUrl);
     const cookies = await context.cookies();
     const page = await context.newPage();
+    await gotoApp(page, baseUrl, '/app');
+    await dismissCompanyPicker(page);
 
-    // S01 — none (brand/VO only)
-    // S11, S13 — none
+    const run = async (scene: string, fn: () => Promise<void>) => {
+      if (!should(scene)) return;
+      try {
+        await fn();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`capture${scene} failed:`, message);
+        await appendNote(scene, `FAILED: ${message}`);
+      }
+    };
 
-    await captureS02(page, browser, cookies, baseUrl, context);
-    await captureS03(browser, cookies, baseUrl);
-    await captureS04(page, baseUrl);
-    await captureS05(page, baseUrl, context);
-    await captureS06(browser, cookies);
-    await captureS07(page, browser, cookies, baseUrl, context);
-    await captureS08(page, baseUrl, context);
-    await captureS09(page, baseUrl, context);
-    await captureS10(page, baseUrl);
-    await captureS12(page, baseUrl);
+    await run('S02', () => captureS02(page, browser!, cookies, baseUrl, context));
+    await run('S03', () => captureS03(browser!, cookies, baseUrl));
+    await run('S04', () => captureS04(page, baseUrl));
+    await run('S05', () => captureS05(page, baseUrl, context));
+    await run('S06', () => captureS06(browser!, cookies));
+    await run('S07', () => captureS07(page, browser!, cookies, baseUrl, context));
+    await run('S08', () => captureS08(page, baseUrl, context));
+    await run('S09', () => captureS09(page, baseUrl, context));
+    await run('S10', () => captureS10(page, baseUrl));
+    await run('S12', () => captureS12(page, baseUrl));
 
     console.log('--- capture summary ---');
     console.log(`POS route: ${discoveredPosRoute ?? '(not found)'}`);
     console.log(`VAT report: ${discoveredVatReportName ?? '(not found)'}`);
     console.log(`Barcode field: ${discoveredBarcodeField ?? '(not resolved)'}`);
+    console.log(`Shift needed: ${discoveredShiftNeeded}`);
+    if (discoveredPosProbeNotes.length) {
+      console.log('POS probes:');
+      for (const note of discoveredPosProbeNotes) console.log(`  - ${note}`);
+    }
     console.log(`Manifest: ${MANIFEST_PATH}`);
   } finally {
     await browser?.close();
