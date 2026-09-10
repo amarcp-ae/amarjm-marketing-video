@@ -1,5 +1,5 @@
 /**
- * Regenerate VO for selected scenes only (assembly-v3).
+ * Regenerate VO for selected scenes only.
  * Usage: npx tsx audio/regen-scenes.ts S01 S02 S06 S09 S11
  */
 import 'dotenv/config';
@@ -68,7 +68,6 @@ function parseScript(raw: string): Array<{scene: string; text: string}> {
   return scenes;
 }
 
-/** Character → word mapping from ElevenLabs alignment. */
 function alignmentToWords(alignment: Alignment | null | undefined): WordTimestamp[] {
   if (!alignment?.characters?.length) return [];
   const {characters, character_start_times_seconds: starts, character_end_times_seconds: ends} =

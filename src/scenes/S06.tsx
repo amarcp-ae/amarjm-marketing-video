@@ -20,9 +20,9 @@ export const S06: React.FC = () => {
       <KineticHeadline
         sceneId={SCENE_ID}
         tokens={[
-          {text: 'متجرك…'},
+          {text: 'متجرٌ'},
           {text: 'تداولٌ', gold: true},
-          {text: 'ومحفظةٌ'},
+          {text: 'محفظةُ'},
           {text: 'وولاء'},
         ]}
       />

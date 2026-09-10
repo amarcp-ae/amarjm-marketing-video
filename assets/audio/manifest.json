@@ -19,13 +19,13 @@
       "file": "vo/S01.mp3",
       "durationSec": 24.084,
       "timestampsFile": "vo/S01.timestamps.json",
-      "wordCount": 34
+      "wordCount": 29
     },
     "S02": {
       "file": "vo/S02.mp3",
-      "durationSec": 20.787,
+      "durationSec": 17.583,
       "timestampsFile": "vo/S02.timestamps.json",
-      "wordCount": 21
+      "wordCount": 19
     },
     "S03": {
       "file": "vo/S03.mp3",
@@ -44,9 +44,9 @@
     },
     "S06": {
       "file": "vo/S06.mp3",
-      "durationSec": 16.329,
+      "durationSec": 21.716,
       "timestampsFile": "vo/S06.timestamps.json",
-      "wordCount": 17
+      "wordCount": 27
     },
     "S07": {
       "file": "vo/S07.mp3",
@@ -60,9 +60,9 @@
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 18.697,
+      "durationSec": 17.583,
       "timestampsFile": "vo/S09.timestamps.json",
-      "wordCount": 20
+      "wordCount": 23
     },
     "S10": {
       "file": "vo/S10.mp3",
@@ -71,9 +71,9 @@
     },
     "S11": {
       "file": "vo/S11.mp3",
-      "durationSec": 11.638,
+      "durationSec": 13.589,
       "timestampsFile": "vo/S11.timestamps.json",
-      "wordCount": 13
+      "wordCount": 17
     },
     "S12": {
       "file": "vo/S12.mp3",

@@ -24,7 +24,7 @@ export const S11: React.FC = () => {
         tokens={[
           {text: 'تطبيقٌ'},
           {text: 'كاملٌ', gold: true},
-          {text: 'لفريقك'},
+          {text: 'للموظّفين'},
         ]}
       />
       <AbsoluteFill
