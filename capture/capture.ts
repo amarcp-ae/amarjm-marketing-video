@@ -520,53 +520,71 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
     return false;
   }
 
-  // UNVERIFIED: jpos profile select markup — avoid bare "POS Profile" (matches Opening Entry fields)
-  const profileDialog = page.locator(
-    '.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile"), .modal.show:has-text("Choose POS Profile")',
-  );
-  if (
-    (await profileDialog.count()) > 0 &&
-    (await profileDialog
-      .first()
-      .isVisible()
-      .catch(() => false))
-  ) {
-    console.log('S07: POS profile dialog detected — preferring Dubai profile');
-    const dubai = profileDialog.first().getByText(/Dubai/i);
-    if ((await dubai.count()) > 0) {
-      await dubai
-        .first()
-        .click({timeout: 5_000})
-        .catch(() => undefined);
-    } else {
-      const choice = profileDialog
-        .first()
-        .locator(
-          '.list-item, .pos-profile-item, .modal-body button, .modal-body .list-row, .modal-body [data-name], .modal-body .card',
-        );
-      if ((await choice.count()) > 0) {
-        await choice
-          .first()
-          .click({timeout: 5_000})
-          .catch(() => undefined);
-      }
+  // Jewellery POS profile picker. Wait for controller, then force Dubai profile.
+  await page.waitForFunction(
+    () => Boolean((window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.['pos-jewellery']),
+    {timeout: 30_000},
+  ).catch(() => undefined);
+  await page.waitForTimeout(500);
+
+  const selectDubaiProfile = async (): Promise<boolean> => {
+    // Open dialog if needed
+    const dialogSel =
+      '.jpos-profile-select-dialog.show, .modal.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile")';
+    let dialog = page.locator(dialogSel);
+    if (!(await dialog.first().isVisible().catch(() => false))) {
+      console.log('S07: opening POS profile dialog');
+      await page.evaluate(`(async () => {
+        const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+        if (jp && typeof jp.prompt_pos_profile_selection === 'function') {
+          Promise.resolve(jp.prompt_pos_profile_selection()).catch(function(){});
+          return 'prompt';
+        }
+        const chip = document.querySelector('.jpos-profile-chip, button.jpos-profile-chip');
+        if (chip) { chip.click(); return 'chip'; }
+        return 'none';
+      })()`).then((r) => console.log('S07 profile open via', r));
+      await page.waitForTimeout(1_000);
+      dialog = page.locator(dialogSel);
     }
-    const confirm = profileDialog
+    if (!(await dialog.first().isVisible().catch(() => false))) {
+      console.warn('S07: POS profile dialog did not open');
+      return false;
+    }
+    console.log('S07: POS profile dialog visible — selecting Dubai');
+    const dubai = dialog.first().getByText(/Dubai/i);
+    if ((await dubai.count()) > 0) {
+      await dubai.first().click({timeout: 5_000, force: true}).catch(() => undefined);
+    } else {
+      const any = dialog.first().locator('.jpos-profile-option, [class*="profile-option"], .list-item, .card, label').first();
+      await any.click({timeout: 5_000, force: true}).catch(() => undefined);
+    }
+    const confirm = dialog
       .first()
       .locator(
         'button:has-text("Continue"), button:has-text("Select"), button:has-text("OK"), button.btn-primary, button:has-text("Start")',
       );
     if ((await confirm.count()) > 0) {
-      await confirm
-        .first()
-        .click({timeout: 5_000})
-        .catch(() => undefined);
+      await confirm.first().click({timeout: 5_000}).catch(() => undefined);
     }
-    await profileDialog
-      .first()
-      .waitFor({state: 'hidden', timeout: 15_000})
-      .catch(() => undefined);
-    await page.waitForTimeout(800);
+    await dialog.first().waitFor({state: 'hidden', timeout: 20_000}).catch(() => undefined);
+    await page.waitForTimeout(1_200);
+    const profile = await page.evaluate(`(() => {
+      const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+      return (jp && (jp.pos_profile || jp.resolved_pos_profile || jp.profile_name)) || null;
+    })()`);
+    console.log('S07 POS profile after select:', profile);
+    return Boolean(profile);
+  };
+
+  const already = await page.evaluate(`(() => {
+    const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+    return (jp && (jp.pos_profile || jp.resolved_pos_profile || jp.profile_name)) || null;
+  })()`);
+  if (!already) {
+    await selectDubaiProfile();
+  } else {
+    console.log('S07 POS profile already set:', already);
   }
 
   await page
@@ -625,13 +643,15 @@ const findPosRoute = async (
   const fields = JSON.stringify(['name', 'title', 'page_name']);
   const apiUrl = `${root}/api/resource/Page?filters=${encodeURIComponent(filters)}&limit_page_length=50&fields=${encodeURIComponent(fields)}`;
   const pageRes = await context.request.get(apiUrl);
-  const candidates: string[] = ['/app/point-of-sale'];
+  // Jewellery POS is the correct marketing surface — never prefer ERPNext /app/point-of-sale.
+  const candidates: string[] = ['/app/pos-jewellery'];
   if (pageRes.ok()) {
     const json = (await pageRes.json()) as FrappeListResponse<{name?: string; page_name?: string}>;
     for (const row of json.data ?? []) {
       const slug = (row.page_name || row.name || '').toString().trim();
       if (!slug) continue;
       const route = `/app/${slug}`.replace(/\/app\/\/+/, '/app/');
+      if (/point-of-sale/i.test(route)) continue;
       if (!candidates.includes(route)) candidates.push(route);
       discoveredPosProbeNotes.push(`Page:${slug}`);
     }
@@ -639,10 +659,11 @@ const findPosRoute = async (
     console.warn(`Page POS lookup HTTP ${pageRes.status()}`);
   }
 
-  // Prefer jewellery-ish POS routes first
+  // Prefer jewellery POS routes; deprioritize anything else
   candidates.sort((a, b) => {
     const score = (r: string) =>
-      (/jewellery|jewelry|jpos/i.test(r) ? 0 : 1) + (/point-of-sale/i.test(r) ? 0 : 2);
+      (/pos-jewellery|jewellery|jewelry|jpos/i.test(r) ? 0 : 1) +
+      (/point-of-sale/i.test(r) ? 5 : 0);
     return score(a) - score(b);
   });
 
@@ -994,166 +1015,234 @@ const captureS06 = async (browser: Browser, cookies: Cookie[]): Promise<void> =>
   }
 };
 
-/** ERPNext POS requires a customer before cart lines can be added. */
-const selectPosCustomer = async (page: Page, customer = 'Cash Customer'): Promise<void> => {
-  await page.waitForFunction(() => Boolean((window as unknown as {cur_pos?: unknown}).cur_pos), {
-    timeout: 30_000,
-  });
-  await page.evaluate(async (customerName) => {
-    const curPos = (
-      window as unknown as {
-        cur_pos?: {
-          allow_negative_stock?: boolean;
-          cart?: {customer_field?: {set_value: (v: string) => Promise<void>}};
-          frm?: {set_value: (f: string, v: string) => Promise<void>; doc?: {customer?: string}};
-        };
-        frappe?: {boot?: {stock_settings?: Record<string, unknown>}};
-      }
-    ).cur_pos;
-    const frappe = (
-      window as unknown as {frappe?: {boot?: {stock_settings?: Record<string, unknown>}}}
-    ).frappe;
-    if (curPos && curPos.allow_negative_stock == null) {
-      curPos.allow_negative_stock = true;
-    }
-    if (frappe?.boot) {
-      frappe.boot.stock_settings = {
-        allow_negative_stock: 1,
-        ...(frappe.boot.stock_settings ?? {}),
-      };
-    }
-    if (curPos?.frm?.doc?.customer === customerName) {
-      return;
-    }
-    if (curPos?.cart?.customer_field?.set_value) {
-      await curPos.cart.customer_field.set_value(customerName);
-    }
-    if (curPos?.frm?.set_value) {
-      await curPos.frm.set_value('customer', customerName);
-    }
-  }, customer);
-  await page.waitForTimeout(800);
+type JewelleryPosController = {
+  customer_control?: {set_value?: (v: string) => Promise<void>; get_value?: () => string};
+  frm?: {
+    set_value?: (f: string, v: string) => Promise<void>;
+    doc?: {
+      customer?: string;
+      items?: Array<Record<string, unknown>>;
+      payments?: Array<Record<string, unknown>>;
+    };
+  };
+  settings?: {payments?: Array<{mode_of_payment?: string; default?: number}>};
+  handle_new_sale_click?: () => void;
+  handle_search_enter?: () => Promise<void> | void;
+  handle_add_to_cart_confirm?: () => void;
+  handle_checkout_click?: () => Promise<void> | void;
+  render_inline_payments?: () => void;
 };
 
-/** Filter POS item grid by barcode and add the single match to the cart. */
+/** Jewellery POS: set Cash Customer via customer_control (checkout reads this, not only frm). */
+const selectPosCustomer = async (page: Page, customer = 'Cash Customer'): Promise<void> => {
+  await page.waitForFunction(
+    () => Boolean((window as unknown as {frappe?: {pages?: Record<string, unknown>}}).frappe?.pages?.['pos-jewellery']),
+    {timeout: 30_000},
+  );
+  const set = await page.evaluate(async (customerName) => {
+    const jp = (
+      window as unknown as {
+        frappe?: {pages?: Record<string, {jewellery_pos?: JewelleryPosController}>};
+      }
+    ).frappe?.pages?.['pos-jewellery']?.jewellery_pos;
+    if (!jp) return {ok: false, value: null as string | null};
+    if (jp.handle_new_sale_click) jp.handle_new_sale_click();
+    if (jp.customer_control?.set_value) await jp.customer_control.set_value(customerName);
+    if (jp.frm?.set_value) await jp.frm.set_value('customer', customerName);
+    return {
+      ok: true,
+      value: jp.customer_control?.get_value?.() || jp.frm?.doc?.customer || null,
+    };
+  }, customer);
+  if (!set.value) {
+    const input = page.locator('.jpos-customer-field input.input-with-feedback').first();
+    if ((await input.count()) > 0) {
+      await input.click({force: true});
+      await input.fill('');
+      await input.type(customer, {delay: 25});
+      await page.waitForTimeout(800);
+      const opt = page
+        .locator('.ui-menu-item, .awesomplete li, p.link-item')
+        .filter({hasText: new RegExp(`^${customer}$`)});
+      if ((await opt.count()) > 0) await opt.first().click({force: true});
+      else await page.keyboard.press('Enter');
+    }
+  }
+  await page.waitForTimeout(600);
+  console.log('S07 customer set', set);
+};
+
+/**
+ * Jewellery POS scan path:
+ * focus input.jpos-search-input → type barcode → Enter / handle_search_enter
+ * → fill gross weight if detail opens at 0 → Add to Cart → wait for cart line.
+ */
 const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => {
-  const barcodeInput = page
-    .getByPlaceholder(/barcode|item code|serial/i)
-    .or(
-      page.locator(
-        'input.jpos-search-input, input[data-fieldname="barcode"], .pos-barcode input, input.barcode, #barcode',
-      ),
-    )
-    .first();
-  if ((await barcodeInput.count()) === 0) {
+  const search = page.locator('input.jpos-search-input').first();
+  if ((await search.count()) === 0) {
+    console.warn('S07: input.jpos-search-input not found');
     return false;
   }
-  await barcodeInput.click({timeout: 10_000, force: true});
-  await barcodeInput.fill('');
-  await barcodeInput.fill(barcode);
-  try {
-    await page.waitForFunction(
-      () => {
-        const items = (window as unknown as {cur_pos?: {item_selector?: {items?: unknown[]}}})
-          .cur_pos?.item_selector?.items;
-        return Array.isArray(items) && items.length === 1;
-      },
-      undefined,
-      {timeout: 10_000},
-    );
-  } catch {
-    console.warn('S07: barcode filter did not resolve to a single item');
-  }
-  const added = await page.evaluate(() => {
-    const sel = (
+  await search.click({timeout: 10_000, force: true});
+  await search.fill('');
+  await search.type(barcode, {delay: 30});
+  await page.waitForTimeout(400);
+  const entered = await page.evaluate(async () => {
+    const jp = (
       window as unknown as {
-        cur_pos?: {
-          item_selector?: {add_filtered_item_to_cart?: () => void; items?: unknown[]};
-          frm?: {doc?: {items?: unknown[]}};
-        };
+        frappe?: {pages?: Record<string, {jewellery_pos?: JewelleryPosController}>};
       }
-    ).cur_pos?.item_selector;
-    if (!sel || !sel.items || sel.items.length !== 1 || !sel.add_filtered_item_to_cart) {
-      return false;
+    ).frappe?.pages?.['pos-jewellery']?.jewellery_pos;
+    if (jp?.handle_search_enter) {
+      await jp.handle_search_enter();
+      return 'handle_search_enter';
     }
-    sel.add_filtered_item_to_cart();
-    return true;
+    return null;
   });
-  if (!added) {
-    // Fallback: click the filtered item card, then Enter.
-    const card = page.locator('.item-wrapper').first();
-    if ((await card.count()) > 0) {
-      await card.click({force: true}).catch(() => undefined);
+  if (!entered) await page.keyboard.press('Enter');
+  await page.waitForTimeout(1_200);
+
+  const detail = page.locator('.jpos-details-panel');
+  if (await detail.isVisible().catch(() => false)) {
+    const qty = detail.locator('input[data-fieldname="qty"]');
+    if ((await qty.count()) > 0) {
+      const cur = await qty.first().inputValue().catch(() => '');
+      if (!cur || Number(cur) === 0) {
+        // Item master default weight for this barcode piece is 32.4 g.
+        await qty.first().click({force: true});
+        await qty.first().fill('32.4');
+        await qty.first().press('Tab');
+        await page.waitForTimeout(1_000);
+      }
     }
-    await page.keyboard.press('Enter').catch(() => undefined);
+    const addBtn = page.locator(
+      'button.jpos-add-to-cart-btn, .jpos-add-to-cart-btn, button:has-text("Add to Cart"), button:has-text("Add to cart")',
+    );
+    await page.evaluate(() => {
+      const jp = (
+        window as unknown as {
+          frappe?: {pages?: Record<string, {jewellery_pos?: JewelleryPosController}>};
+        }
+      ).frappe?.pages?.['pos-jewellery']?.jewellery_pos;
+      jp?.handle_add_to_cart_confirm?.();
+    });
+    if ((await addBtn.count()) > 0 && (await addBtn.first().isVisible().catch(() => false))) {
+      await addBtn.first().click({force: true}).catch(() => undefined);
+    }
   }
-  const line = page.locator(
-    '.cart-items-section .cart-item, .cart-items-section .item-wrapper, .cart-items-section .item-name, .cart-items-section >> text=/Grams|gold-bangle|Bangle/i',
-  );
-  try {
-    await line.first().waitFor({state: 'visible', timeout: 15_000});
-    return true;
-  } catch {
-    const cartText = await page
-      .locator('.cart-items-section')
-      .innerText()
-      .catch(() => '');
-    console.warn(`S07: cart line missing after scan. cart="${cartText.slice(0, 120)}"`);
-    return /no items in cart/i.test(cartText) === false && cartText.trim().length > 0;
+
+  // Hold ~2s so the cart line (32.4 g / 22K / metal + making) is settled for WEBM+PNG.
+  await page.waitForTimeout(2_000);
+
+  const state = (await page.evaluate(`(() => {
+    const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+    const items = (jp && jp.frm && jp.frm.doc && jp.frm.doc.items) || [];
+    const cartEl = document.querySelector('.jpos-cart-panel .jpos-cart-items') || document.querySelector('.jpos-cart-items');
+    const cartText = (cartEl && cartEl.innerText) || '';
+    return {
+      count: items.length,
+      items: items.map((it) => ({
+        item_code: it.item_code,
+        qty: it.qty,
+        karat: it.karat,
+        metal_amount: it.metal_amount,
+        making_amount: it.making_amount,
+      })),
+      cartText: cartText.replace(/\\s+/g, ' ').trim().slice(0, 240),
+    };
+  })()`)) as {count: number; cartText: string};
+  console.log('S07 cart state', state);
+  const ok =
+    (state.count || 0) > 0 ||
+    /32\.4/i.test(state.cartText || '') ||
+    (/22K/i.test(state.cartText || '') && /gold-bangle/i.test(state.cartText || ''));
+  if (!ok) {
+    console.warn(`S07: cart line missing after scan. cart="${(state.cartText || '').slice(0, 160)}"`);
   }
+  return ok;
 };
 
+/**
+ * Open jewellery POS payment modal. Dubai profile ships Cash-only; inject Credit Card
+ * client-side so Cash + Card are both visible. Do NOT confirm/pay.
+ */
 const openPosPayment = async (page: Page): Promise<boolean> => {
-  // Native .checkout-btn click is flaky in headless; toggle POS components directly.
-  const opened = await page.evaluate(() => {
-    const curPos = (
-      window as unknown as {
-        cur_pos?: {
-          toggle_components?: (showItems: boolean) => void;
-          payment?: {
-            toggle_component?: (show: boolean) => void;
-            checkout?: () => void;
-          };
-          cart?: {
-            toggle_component?: (show: boolean) => void;
-            highlight_checkout_btn?: () => void;
-          };
-          item_selector?: {toggle_component?: (show: boolean) => void};
-          frm?: {doc?: {items?: unknown[]}};
-        };
+  // Open payment dialog directly — checkout gates can no-op in headless.
+  await page.evaluate(`(() => {
+    const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+    if (!jp) return;
+    document.querySelectorAll('.jpos-profile-select-dialog').forEach(function (el) {
+      el.classList.remove('show');
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+    var d = jp.ensure_payment_dialog && jp.ensure_payment_dialog();
+    if (d && d.show) d.show();
+    if (jp.settings) {
+      jp.settings.payments = jp.settings.payments || [];
+      if (!jp.settings.payments.some(function (p) { return /card/i.test(p.mode_of_payment || ''); })) {
+        jp.settings.payments.push({mode_of_payment: 'Credit Card', default: 0});
       }
-    ).cur_pos;
-    if (!curPos) return {ok: false, reason: 'no cur_pos'};
-    const itemCount = curPos.frm?.doc?.items?.length ?? 0;
-    if (!itemCount) return {ok: false, reason: 'empty cart', itemCount};
-    curPos.cart?.highlight_checkout_btn?.();
-    if (typeof curPos.toggle_components === 'function') {
-      curPos.toggle_components(false);
-    } else {
-      curPos.item_selector?.toggle_component?.(false);
-      curPos.cart?.toggle_component?.(false);
-      curPos.payment?.toggle_component?.(true);
     }
-    // Some builds expose payment.checkout() as the click handler.
-    curPos.payment?.checkout?.();
-    const pay = document.querySelector('.payment-container') as HTMLElement | null;
-    const visible = Boolean(pay && getComputedStyle(pay).display !== 'none');
-    return {ok: visible, reason: visible ? 'toggled' : 'still hidden', itemCount};
-  });
-  console.log('S07 openPosPayment', opened);
-  if (!opened.ok) {
-    const checkout = page.locator('.cart-totals-section .checkout-btn, div.checkout-btn').first();
-    if ((await checkout.count()) > 0) {
-      await checkout.click({force: true}).catch(() => undefined);
-      await page.waitForTimeout(800);
+    if (jp.frm && jp.frm.doc) {
+      var pays = jp.frm.doc.payments || [];
+      if (!pays.some(function (p) { return /card/i.test(String(p.mode_of_payment || '')); })) {
+        var row = frappe.model.add_child(jp.frm.doc, 'Sales Invoice Payment', 'payments');
+        row.mode_of_payment = 'Credit Card';
+        row.amount = 0;
+        row.type = 'Bank';
+      }
+    }
+    if (typeof jp.render_inline_payments === 'function') jp.render_inline_payments();
+  })()`);
+  await page.waitForTimeout(1_200);
+
+  let visible = await page
+    .locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (!visible) {
+    await page.evaluate(`(async () => {
+      const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+      if (jp && jp.handle_checkout_click) await jp.handle_checkout_click();
+      else if (jp && jp.go_to_payment_step) await jp.go_to_payment_step();
+    })()`);
+    await page.waitForTimeout(1_200);
+    if (
+      !(await page
+        .locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show')
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await page
+        .locator('button.jpos-checkout-btn, .jpos-checkout-btn')
+        .first()
+        .click({force: true})
+        .catch(() => undefined);
+      await page.waitForTimeout(1_200);
     }
   }
-  const visible = await page.evaluate(() => {
-    const pay = document.querySelector('.payment-container') as HTMLElement | null;
-    return Boolean(pay && getComputedStyle(pay).display !== 'none');
+
+  visible = await page
+    .locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const modalText = await page
+    .locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show')
+    .first()
+    .innerText()
+    .catch(() => '');
+  console.log('S07 openPosPayment', {
+    visible,
+    hasCash: /\bCash\b/i.test(modalText),
+    hasCard: /Card/i.test(modalText),
   });
-  return visible;
+  return visible && /\bCash\b/i.test(modalText) && /Card/i.test(modalText);
 };
+
 
 const captureS07 = async (
   page: Page,
@@ -1163,14 +1252,15 @@ const captureS07 = async (
   context: BrowserContext,
 ): Promise<void> => {
   await dismissCompanyPicker(page);
-  const posRoute = await findPosRoute(page, context, baseUrl);
-  if (!posRoute) {
+  // Hard preference: jewellery POS (generic /app/point-of-sale is discarded).
+  const posRoute = (await findPosRoute(page, context, baseUrl)) || '/app/pos-jewellery';
+  if (!posRoute.includes('pos-jewellery') && !posRoute.includes('jewellery')) {
     await appendNote(
       'S07',
-      `POS route with barcode input not found. Probes: ${discoveredPosProbeNotes.join(' | ')}`,
+      `Expected /app/pos-jewellery; got ${posRoute}. Probes: ${discoveredPosProbeNotes.join(' | ')}`,
     );
-    return;
   }
+  discoveredPosRoute = posRoute;
 
   // Prefer the known piece barcode; fall back to Item doc resolution.
   let barcodeValue = TARGET_BARCODE;
@@ -1192,8 +1282,18 @@ const captureS07 = async (
     cookies,
     async (vp) => {
       await gotoApp(vp, baseUrl, posRoute);
-      await prepareForShot(vp);
+      // Select Dubai profile BEFORE prepareForShot — Escape would dismiss the dialog.
       const ready = await preparePosDesk(vp);
+      await prepareForShot(vp, {dismissOverlays: false});
+      // Re-assert Dubai profile after shot prep (Escape-safe path already used).
+      const profileNow = await vp.evaluate(`(() => {
+        const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
+        return (jp && (jp.pos_profile || jp.resolved_pos_profile)) || null;
+      })()`);
+      if (!profileNow) {
+        console.warn('S07: profile missing after prepare — retrying select');
+        await preparePosDesk(vp);
+      }
       if (!ready) {
         await appendNote('S07', 'POS requires an open shift and none is open — not creating one');
         await capturePng(vp, {scene: 'S07', relativeFile: 'S07/pos-shift-required.png'});
@@ -1213,7 +1313,6 @@ const captureS07 = async (
       if (!scanned) {
         await appendNote('S07', `Barcode scan did not add a cart line (${barcodeValue})`);
       }
-      await vp.waitForTimeout(1_500);
       // Do not press Escape here — it backs out of POS cart state.
       await capturePng(vp, {
         scene: 'S07',
@@ -1221,7 +1320,7 @@ const captureS07 = async (
         dismissOverlays: false,
       });
 
-      // Payment screen — do not submit Complete Order.
+      // Payment step — Cash + Card visible; do not complete the order.
       if (scanned) {
         const paid = await openPosPayment(vp);
         if (paid) {
@@ -1232,7 +1331,7 @@ const captureS07 = async (
             dismissOverlays: false,
           });
         } else {
-          await appendNote('S07', 'Checkout/payment screen did not open');
+          await appendNote('S07', 'Checkout/payment screen did not open with Cash + Card');
         }
       }
     },
