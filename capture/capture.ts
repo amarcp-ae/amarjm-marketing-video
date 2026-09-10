@@ -159,7 +159,7 @@ const hideAmarcpEmailNodes = async (page: Page): Promise<void> => {
 /** Dismiss multi-company selector shown after login / on desk. */
 const dismissCompanyPicker = async (page: Page): Promise<void> => {
   const modal = page.locator(
-    '.modal.show:has-text("Select Company"), .modal.show:has-text("Choose Company"), .modal.show:has-text("Company")',
+    '.amarjm-desk-company-dialog.show, .modal.show:has-text("Select Company"), .modal.show:has-text("Choose Company")',
   );
   if (
     (await modal.count()) === 0 ||
@@ -171,28 +171,33 @@ const dismissCompanyPicker = async (page: Page): Promise<void> => {
     return;
   }
   console.log('Company picker detected — selecting Al Noor Jewellery - Dubai');
-  const dubai = modal.first().getByText(COMPANY_DUBAI, {exact: false});
-  if ((await dubai.count()) > 0) {
-    await dubai
+  const dlg = modal.first();
+  // Prefer the AmarJM company chip button; fall back to visible text in the dialog.
+  const chip = dlg.locator(`button.amarjm-dcg-item:has-text("${COMPANY_DUBAI}")`);
+  if ((await chip.count()) > 0) {
+    await chip
       .first()
       .click({timeout: 5_000})
       .catch(() => undefined);
+  } else {
+    const dubai = dlg.getByText(COMPANY_DUBAI, {exact: false});
+    if ((await dubai.count()) > 0) {
+      await dubai
+        .first()
+        .click({timeout: 5_000, force: true})
+        .catch(() => undefined);
+    }
   }
-  const cont = modal
-    .first()
-    .locator(
-      'button:has-text("Continue"), button:has-text("Select"), button.btn-primary, button:has-text("OK")',
-    );
+  const cont = dlg.locator(
+    'button:has-text("Continue"), button.btn-modal-primary, button:has-text("Select"), button.btn-primary',
+  );
   if ((await cont.count()) > 0) {
     await cont
       .first()
       .click({timeout: 5_000})
       .catch(() => undefined);
   }
-  await modal
-    .first()
-    .waitFor({state: 'hidden', timeout: 15_000})
-    .catch(() => undefined);
+  await dlg.waitFor({state: 'hidden', timeout: 15_000}).catch(() => undefined);
   await page.waitForTimeout(500);
 };
 
@@ -415,28 +420,62 @@ const waitForDatatable = async (page: Page): Promise<void> => {
   await page.waitForTimeout(400);
 };
 
+const waitForQueryReportFilters = async (page: Page): Promise<boolean> => {
+  try {
+    await page.waitForFunction(
+      () => {
+        const qr = (window as unknown as {frappe?: {query_report?: {filters?: unknown[]}}}).frappe
+          ?.query_report;
+        return Array.isArray(qr?.filters) && (qr?.filters?.length ?? 0) > 0;
+      },
+      undefined,
+      {timeout: 30_000},
+    );
+    return true;
+  } catch {
+    console.warn('Query report filters did not load within 30s');
+    return false;
+  }
+};
+
 const setQueryReportFilter = async (
   page: Page,
   fieldname: string,
   value: string,
 ): Promise<void> => {
-  const ok = await page.evaluate(
+  await waitForQueryReportFilters(page);
+  const result = await page.evaluate(
     ({fieldname, value}) => {
       const qr = (
         window as unknown as {
-          frappe?: {query_report?: {set_filter_value?: (f: string, v: string) => void}};
+          frappe?: {
+            query_report?: {
+              filters?: Array<{df?: {fieldname?: string}}>;
+              set_filter_value?: (f: string, v: string) => void;
+            };
+          };
         }
       ).frappe?.query_report;
-      if (qr && typeof qr.set_filter_value === 'function') {
-        qr.set_filter_value(fieldname, value);
-        return true;
+      if (!qr || typeof qr.set_filter_value !== 'function') {
+        return {ok: false, reason: 'no set_filter_value'};
       }
-      return false;
+      const names = (qr.filters ?? []).map((f) => f.df?.fieldname).filter(Boolean);
+      if (!names.includes(fieldname)) {
+        return {ok: false, reason: `missing filter ${fieldname}`, names};
+      }
+      try {
+        qr.set_filter_value(fieldname, value);
+        return {ok: true, names};
+      } catch (err) {
+        return {ok: false, reason: String(err), names};
+      }
     },
     {fieldname, value},
   );
-  if (!ok) {
-    console.warn(`frappe.query_report.set_filter_value unavailable for ${fieldname}`);
+  if (!result.ok) {
+    console.warn(
+      `frappe.query_report.set_filter_value(${fieldname}) failed: ${result.reason ?? 'unknown'}`,
+    );
   }
   await page.waitForTimeout(400);
 };
@@ -499,6 +538,22 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
     .first()
     .waitFor({state: 'hidden', timeout: 20_000})
     .catch(() => undefined);
+
+  // "Create POS Opening Entry" means no open shift — do not submit/create one.
+  const openingEntry = page.locator(
+    '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry")',
+  );
+  if (
+    (await openingEntry.count()) > 0 &&
+    (await openingEntry
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    discoveredShiftNeeded = true;
+    console.warn('S07: POS requires an open shift (Opening Entry modal) — not creating one');
+    return false;
+  }
 
   const shiftLock = page.locator(
     '.jpos-shift-lock-overlay, .jpos-shift-lock-overlay.is-visible, [class*="shift-lock"]',
@@ -574,12 +629,29 @@ const findPosRoute = async (
           .catch(() => '')) || ''
       ).slice(0, 240);
       const hasBarcode = await pageHasBarcodeInput(page);
-      const note = `${probe} status=${status} barcodeInput=${hasBarcode} body=${body.replace(/\s+/g, ' ').slice(0, 120)}`;
+      const openingEntryVisible = await page
+        .locator(
+          '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry")',
+        )
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const note = `${probe} status=${status} barcodeInput=${hasBarcode} openingEntry=${openingEntryVisible} body=${body.replace(/\s+/g, ' ').slice(0, 120)}`;
       discoveredPosProbeNotes.push(note);
       console.log(`POS probe: ${note}`);
-      if (status < 400 && hasBarcode && !/not permitted|no permission|login/i.test(body)) {
+      // Real POS: barcode input present, OR Opening Entry modal (shift required — still the POS page).
+      if (
+        status < 400 &&
+        (hasBarcode || openingEntryVisible) &&
+        !/not permitted|no permission|login/i.test(body)
+      ) {
         discoveredPosRoute = probe;
-        console.log(`POS route selected (barcode input present): ${probe}`);
+        if (openingEntryVisible && !hasBarcode) {
+          discoveredShiftNeeded = true;
+          console.log(`POS route selected (Opening Entry / shift required): ${probe}`);
+        } else {
+          console.log(`POS route selected (barcode input present): ${probe}`);
+        }
         return probe;
       }
     } catch (err) {
@@ -760,16 +832,19 @@ const captureS05 = async (page: Page, baseUrl: string, context: BrowserContext):
   await capturePng(page, {scene: 'S05', relativeFile: 'S05/item-metal.png'});
 
   const itemCode = typeof item.raw.item_code === 'string' ? item.raw.item_code : item.name;
+  // Standard Stock Balance is a prepared/background report without live filters.
+  // Jewellery Stock Balance exposes item_code and returns datatable rows.
   await gotoApp(
     page,
     baseUrl,
-    `/app/query-report/Stock Balance?item_code=${encodeURIComponent(itemCode)}`,
+    `/app/query-report/Jewellery Stock Balance?item_code=${encodeURIComponent(itemCode)}`,
   );
   await dismissCompanyPicker(page);
   await prepareForShot(page);
+  await setQueryReportFilter(page, 'company', COMPANY_DUBAI);
+  await setQueryReportFilter(page, 'division', 'Metal');
   await setQueryReportFilter(page, 'item_code', itemCode);
-  await setReportFilters(page, {item_code: itemCode});
-  // Refresh report if a button exists
+  await setReportFilters(page, {item_code: itemCode, company: COMPANY_DUBAI});
   const refresh = page.locator(
     'button:has-text("Refresh"), button:has-text("Show Report"), .btn-primary:has-text("Refresh")',
   );
