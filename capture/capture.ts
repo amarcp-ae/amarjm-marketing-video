@@ -1163,8 +1163,8 @@ const scanPosBarcode = async (page: Page, barcode: string): Promise<boolean> => 
 };
 
 /**
- * Open jewellery POS payment modal. Dubai profile ships Cash-only; inject Credit Card
- * client-side so Cash + Card are both visible. Do NOT confirm/pay.
+ * Open jewellery POS payment modal. Modes come from the POS Profile (Cash + Credit Card).
+ * Do NOT confirm/pay.
  */
 const openPosPayment = async (page: Page): Promise<boolean> => {
   // Open payment dialog directly — checkout gates can no-op in headless.
@@ -1178,21 +1178,6 @@ const openPosPayment = async (page: Page): Promise<boolean> => {
     document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
     var d = jp.ensure_payment_dialog && jp.ensure_payment_dialog();
     if (d && d.show) d.show();
-    if (jp.settings) {
-      jp.settings.payments = jp.settings.payments || [];
-      if (!jp.settings.payments.some(function (p) { return /card/i.test(p.mode_of_payment || ''); })) {
-        jp.settings.payments.push({mode_of_payment: 'Credit Card', default: 0});
-      }
-    }
-    if (jp.frm && jp.frm.doc) {
-      var pays = jp.frm.doc.payments || [];
-      if (!pays.some(function (p) { return /card/i.test(String(p.mode_of_payment || '')); })) {
-        var row = frappe.model.add_child(jp.frm.doc, 'Sales Invoice Payment', 'payments');
-        row.mode_of_payment = 'Credit Card';
-        row.amount = 0;
-        row.type = 'Bank';
-      }
-    }
     if (typeof jp.render_inline_payments === 'function') jp.render_inline_payments();
   })()`);
   await page.waitForTimeout(1_200);

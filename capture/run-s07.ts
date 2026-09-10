@@ -149,15 +149,21 @@ async function main() {
 
   const detailVisible = await page.locator('.jpos-details-panel').isVisible().catch(() => false);
   console.log('detail visible', detailVisible);
+  let qtySource: 'prefilled' | 'typed' | 'n/a' = 'n/a';
+  let qtyAsScanned: string | null = null;
   if (detailVisible) {
     const qty = page.locator('.jpos-details-panel input[data-fieldname="qty"]');
     if (await qty.count()) {
       const v = await qty.first().inputValue();
-      console.log('qty', v);
+      qtyAsScanned = v;
+      console.log('qty as scanned (before any fill)', v);
       if (!v || Number(v) === 0) {
+        qtySource = 'typed';
         await qty.first().fill('32.4');
         await qty.first().press('Tab');
         await page.waitForTimeout(1500);
+      } else {
+        qtySource = 'prefilled';
       }
     }
     await page.evaluate(
@@ -176,10 +182,15 @@ async function main() {
       const qty = page.locator('.jpos-details-panel input[data-fieldname="qty"]');
       if (await qty.count()) {
         const v = await qty.first().inputValue();
+        qtyAsScanned = v;
+        console.log('qty as scanned (before any fill)', v);
         if (!v || Number(v) === 0) {
+          qtySource = 'typed';
           await qty.first().fill('32.4');
           await qty.first().press('Tab');
           await page.waitForTimeout(1500);
+        } else {
+          qtySource = 'prefilled';
         }
       }
       await page.evaluate(
@@ -189,6 +200,7 @@ async function main() {
       if (await add.first().isVisible().catch(() => false)) await add.first().click({force: true});
     }
   }
+  console.log('qtySource', qtySource, 'qtyAsScanned', qtyAsScanned);
 
   await page.waitForTimeout(2500);
   const line = await page.evaluate(`(() => {
@@ -211,7 +223,7 @@ async function main() {
     throw new Error('No cart line');
   }
 
-  // Payment — do not complete. Open dialog directly (checkout gates can no-op).
+  // Payment — do not complete. Modes come from POS Profile (no client-side inject).
   await page.evaluate(`(() => {
     const jp = frappe.pages['pos-jewellery'].jewellery_pos;
     // Close profile dialogs if any still linger
@@ -222,19 +234,6 @@ async function main() {
     document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
     const d = jp.ensure_payment_dialog && jp.ensure_payment_dialog();
     if (d && d.show) d.show();
-    if (jp.settings) {
-      jp.settings.payments = jp.settings.payments || [];
-      if (!jp.settings.payments.some((p) => /card/i.test(p.mode_of_payment || ''))) {
-        jp.settings.payments.push({mode_of_payment: 'Credit Card', default: 0});
-      }
-    }
-    const pays = (jp.frm && jp.frm.doc && jp.frm.doc.payments) || [];
-    if (jp.frm && jp.frm.doc && !pays.some((p) => /card/i.test(String(p.mode_of_payment || '')))) {
-      const row = frappe.model.add_child(jp.frm.doc, 'Sales Invoice Payment', 'payments');
-      row.mode_of_payment = 'Credit Card';
-      row.amount = 0;
-      row.type = 'Bank';
-    }
     if (typeof jp.render_inline_payments === 'function') jp.render_inline_payments();
   })()`);
   await page.waitForTimeout(1500);
@@ -278,6 +277,8 @@ async function main() {
         line,
         payHasCash: /Cash/.test(payText),
         payHasCard: /Card/.test(payText),
+        qtySource,
+        qtyAsScanned,
         selectors: {
           profileDialog: '.jpos-profile-select-dialog.show',
           searchInput: 'input.jpos-search-input',
