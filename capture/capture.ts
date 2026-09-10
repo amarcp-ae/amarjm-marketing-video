@@ -484,9 +484,26 @@ const setQueryReportFilter = async (
 const preparePosDesk = async (page: Page): Promise<boolean> => {
   await dismissCompanyPicker(page);
 
-  // UNVERIFIED: jpos profile select markup
+  // Opening Entry means no open shift — check BEFORE profile heuristics
+  // (Opening Entry contains a "POS Profile" field that false-triggers profile select).
+  const openingEntry = page.locator(
+    '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry"), .modal.show:has-text("Opening Entry")',
+  );
+  if (
+    (await openingEntry.count()) > 0 &&
+    (await openingEntry
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    discoveredShiftNeeded = true;
+    console.warn('S07: POS requires an open shift (Opening Entry modal) — not creating one');
+    return false;
+  }
+
+  // UNVERIFIED: jpos profile select markup — avoid bare "POS Profile" (matches Opening Entry fields)
   const profileDialog = page.locator(
-    '.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile"), .modal.show:has-text("POS Profile")',
+    '.jpos-profile-select-dialog.show, .modal.show:has-text("Select POS Profile"), .modal.show:has-text("Choose POS Profile")',
   );
   if (
     (await profileDialog.count()) > 0 &&
@@ -539,10 +556,7 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
     .waitFor({state: 'hidden', timeout: 20_000})
     .catch(() => undefined);
 
-  // "Create POS Opening Entry" means no open shift — do not submit/create one.
-  const openingEntry = page.locator(
-    '.modal.show:has-text("Create POS Opening Entry"), .modal.show:has-text("POS Opening Entry"), .modal.show:has-text("Opening Entry")',
-  );
+  // Re-check Opening Entry after any profile handling
   if (
     (await openingEntry.count()) > 0 &&
     (await openingEntry
