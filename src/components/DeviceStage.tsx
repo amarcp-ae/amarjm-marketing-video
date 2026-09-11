@@ -9,6 +9,7 @@ import {
 } from 'remotion';
 import {brand} from '../brand';
 import {Callout} from './Callout';
+import {PHONE_MAX_WIDTH, PhoneFrame, phoneSize} from './PhoneFrame';
 
 type CropFocus = {
   /** CSS object-position, e.g. "55% 40%" */
@@ -21,7 +22,7 @@ type DeviceStageProps = {
   src?: string;
   kind?: 'image' | 'video';
   variant?: 'laptop' | 'phone';
-  /** Defaults to ≥70% of 1920 frame width. */
+  /** Defaults to ≥70% of 1920 frame width for laptop; phones cap at 30%. */
   width?: number;
   height?: number;
   /** Perspective tilt — v3 default 3°. */
@@ -44,8 +45,9 @@ const resolveSrc = (src: string): string => {
 };
 
 /**
- * Large cropped screen (≥70% frame width), 3° tilt, gold rim.
- * Never downscales media below 1:1 (object-fit cover + scale ≥ 1).
+ * Laptop: large cropped screen (≥70% frame width), 3° tilt, gold rim.
+ * Phone: 19.5:9 PhoneFrame with Dynamic Island, max 30% frame width.
+ * Media never stretches — object-fit cover (crop) only.
  */
 export const DeviceStage: React.FC<DeviceStageProps> = ({
   src = '',
@@ -63,8 +65,10 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
   const {durationInFrames} = useVideoConfig();
 
   const isPhone = variant === 'phone';
-  // Default prop is already ≥70% frame width; honor explicit smaller widths for multi-device layouts.
-  const w = width;
+  const phone = isPhone ? phoneSize(Math.min(width, PHONE_MAX_WIDTH)) : null;
+  const w = phone ? phone.width : width;
+  const h = phone ? phone.height : height;
+
   const enter = interpolate(frame, [enterDelay, enterDelay + 14], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -76,8 +80,6 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
     extrapolateRight: 'clamp',
   });
 
-  const radius = isPhone ? 40 : 16;
-  const inset = isPhone ? 14 : 14;
   const scale = Math.max(1, crop.scale ?? 1.5);
 
   const mediaStyle: React.CSSProperties = {
@@ -90,12 +92,62 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
     imageRendering: 'auto',
   };
 
+  const content = children ? (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        // HTML mockups fill the phone screen; overflow crops — never stretch.
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {children}
+    </div>
+  ) : kind === 'video' ? (
+    <OffthreadVideo src={resolveSrc(src)} style={mediaStyle} muted />
+  ) : (
+    <Img src={resolveSrc(src)} style={mediaStyle} />
+  );
+
+  if (isPhone && phone) {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: phone.width,
+          height: phone.height,
+          opacity,
+          transform: `translateX(${x}px) perspective(1600px) rotateY(${-tiltDeg}deg)`,
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        <PhoneFrame width={phone.width} showRim>
+          {content}
+        </PhoneFrame>
+        {callout ? (
+          <Callout
+            label={callout.label}
+            x={Math.min(callout.x, phone.width - 40)}
+            y={Math.min(callout.y, phone.height - 40)}
+            delay={callout.delay ?? 20}
+            ringSize={callout.ringSize ?? 56}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  const radius = 16;
+  const inset = 14;
+
   return (
     <div
       style={{
         position: 'relative',
         width: w,
-        height,
+        height: h,
         opacity,
         transform: `translateX(${x}px) perspective(1600px) rotateY(${-tiltDeg}deg)`,
         transformStyle: 'preserve-3d',
@@ -129,34 +181,26 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
           top: inset,
           left: inset,
           right: inset,
-          bottom: inset + (isPhone ? 8 : 18),
-          borderRadius: isPhone ? 28 : 8,
+          bottom: inset + 18,
+          borderRadius: 8,
           overflow: 'hidden',
           backgroundColor: '#050507',
         }}
       >
-        {children ? (
-          children
-        ) : kind === 'video' ? (
-          <OffthreadVideo src={resolveSrc(src)} style={mediaStyle} muted />
-        ) : (
-          <Img src={resolveSrc(src)} style={mediaStyle} />
-        )}
+        {content}
       </div>
-      {!isPhone ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: '18%',
-            right: '18%',
-            bottom: 5,
-            height: 10,
-            borderRadius: 4,
-            background: '#1c1c22',
-            borderTop: `1px solid ${brand.colors.gold}55`,
-          }}
-        />
-      ) : null}
+      <div
+        style={{
+          position: 'absolute',
+          left: '18%',
+          right: '18%',
+          bottom: 5,
+          height: 10,
+          borderRadius: 4,
+          background: '#1c1c22',
+          borderTop: `1px solid ${brand.colors.gold}55`,
+        }}
+      />
       {callout ? (
         <Callout
           label={callout.label}

@@ -39,14 +39,13 @@ export const S11: React.FC = () => {
         <DeviceStage
           key={index}
           variant="phone"
-          width={720}
-          height={980}
+          width={393}
           tiltDeg={3}
           crop={{scale: 1}}
           callout={{
             label: ['حضور', 'مستندات', 'تقييم', 'رواتب'][index],
-            x: 360,
-            y: 200,
+            x: 196,
+            y: 180,
             delay: Math.round(0.35 * fps),
           }}
         >

@@ -42,10 +42,9 @@ export const S03: React.FC = () => {
           <DeviceStage
             src={ASSETS.screens.S03.salesInvoice}
             variant="phone"
-            width={360}
-            height={760}
+            width={400}
             tiltDeg={3}
-            crop={{objectPosition: '50% 30%', scale: 1.2}}
+            crop={{objectPosition: '50% 30%', scale: 1.15}}
             enterDelay={6}
           />
         </div>
@@ -53,12 +52,11 @@ export const S03: React.FC = () => {
           <DeviceStage
             src={ASSETS.screens.S03.paymentEntry}
             variant="phone"
-            width={360}
-            height={760}
+            width={400}
             tiltDeg={3}
-            crop={{objectPosition: '50% 55%', scale: 1.25}}
+            crop={{objectPosition: '50% 55%', scale: 1.15}}
             enterDelay={12}
-            callout={{label: 'حفظ', x: 180, y: 520, delay: Math.round(1.1 * fps)}}
+            callout={{label: 'حفظ', x: 200, y: 620, delay: Math.round(1.1 * fps)}}
           />
         </div>
       </AbsoluteFill>

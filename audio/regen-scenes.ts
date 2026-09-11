@@ -18,10 +18,10 @@ const TAIL_SEC = 0.4;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'usjDi9nBY6UHvtKrL4ba';
 const MODEL_ID = 'eleven_multilingual_v2';
 const VOICE_SETTINGS = {
-  stability: 0.45,
-  similarity_boost: 0.8,
-  style: 0.2,
-  speed: 1.08,
+  stability: 0.3,
+  similarity_boost: 0.85,
+  style: 0.55,
+  speed: 1.05,
 } as const;
 
 type Alignment = {
@@ -135,14 +135,13 @@ async function synthesizeScene(apiKey: string, text: string) {
 }
 
 async function main() {
-  const wanted = process.argv.slice(2).map((s) => {
+  const wanted = (process.argv.slice(2).length
+    ? process.argv.slice(2)
+    : Array.from({length: 13}, (_, i) => `S${String(i + 1).padStart(2, '0')}`)
+  ).map((s) => {
     const n = s.replace(/^S/i, '');
     return `S${n.padStart(2, '0')}`;
   });
-  if (!wanted.length) {
-    console.error('Usage: npx tsx audio/regen-scenes.ts S01 S02 S06 S09 S11');
-    process.exit(1);
-  }
 
   const apiKey = requireApiKey();
   await mkdir(VO_DIR, {recursive: true});

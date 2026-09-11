@@ -45,11 +45,10 @@ export const S06: React.FC = () => {
             </DeviceStage>
             <DeviceStage
               variant="phone"
-              width={480}
-              height={860}
+              width={420}
               tiltDeg={3}
               crop={{scale: 1}}
-              callout={{label: 'ولاء', x: 240, y: 280, delay: Math.round(0.5 * fps)}}
+              callout={{label: 'ولاء', x: 210, y: 260, delay: Math.round(0.5 * fps)}}
             >
               <ShopMock variant="shop-03" />
             </DeviceStage>
