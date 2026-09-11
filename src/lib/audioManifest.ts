@@ -2,6 +2,7 @@ import sceneFrames from '../sceneFrames.json';
 
 export const FPS = 30;
 export const FALLBACK_SCENE_FRAMES = 90;
+export const VO_TAIL_SEC = 0.3;
 
 export type SceneId =
   | 'S01'
@@ -44,10 +45,6 @@ export type AudioManifest = {
   scenes: AudioManifestEntry[];
 };
 
-/**
- * Frame counts sourced from the audio manifest (mirrored in src/sceneFrames.json
- * so Remotion can import them without Node fs). Missing entries fall back to 90.
- */
 export const getSceneDurationInFrames = (
   scene: SceneId,
   manifest?: Partial<Record<SceneId, number>> | null,
@@ -94,4 +91,17 @@ export const defaultSceneFrames = (): Record<SceneId, number> => {
 
 export const totalDurationInFrames = (frames: Record<SceneId, number>): number => {
   return SCENE_IDS.reduce((sum, id) => sum + frames[id], 0);
+};
+
+/** Cumulative start frame for each scene on the master timeline. */
+export const sceneStartFrames = (
+  frames: Record<SceneId, number> = defaultSceneFrames(),
+): Record<SceneId, number> => {
+  const starts = {} as Record<SceneId, number>;
+  let cursor = 0;
+  for (const id of SCENE_IDS) {
+    starts[id] = cursor;
+    cursor += frames[id];
+  }
+  return starts;
 };

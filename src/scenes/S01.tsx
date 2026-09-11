@@ -1,13 +1,584 @@
 import React from 'react';
-import {ScenePlaceholder} from '../components/ScenePlaceholder';
+import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {brand} from '../brand';
+import {LogoWordmark} from '../components/LogoWordmark';
+import {SceneShell} from '../components/SceneShell';
+import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
+import {currentSpokenWord, findWordOnsetFrame} from '../lib/wordTiming';
 
 const SCENE_ID: SceneId = 'S01';
-
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
-export const S01: React.FC = () => {
-  return <ScenePlaceholder sceneNumber={1} />;
+/** Spoken RTL order — all start dim; each lights only on its own word onset. */
+const ROLES = [
+  {key: 'المدير', label: 'المدير الماليّ'},
+  {key: 'المحاسب', label: 'المحاسب'},
+  {key: 'المالك', label: 'المالك'},
+  {key: 'البائع', label: 'البائع'},
+  {key: 'الموزّع', label: 'الموزّع'},
+  {key: 'الورشة', label: 'الورشة'},
+  {key: 'المصنع', label: 'المصنع'},
+] as const;
+
+const FACTORY_CHIPS = [
+  {key: 'صياغة', label: 'صياغة'},
+  {key: 'ترصيع', label: 'ترصيع'},
+  {key: 'تلميع', label: 'تلميع'},
+  {key: 'تشطيب', label: 'تشطيب'},
+] as const;
+
+const MODULES = [
+  {key: 'الحسابات', label: 'حسابات'},
+  {key: 'والمخزون', label: 'مخزون'},
+  {key: 'الموارد', label: 'HR'},
+  {key: 'المبيعات', label: 'مبيعات'},
+  {key: 'التسويق', label: 'تسويق'},
+  {key: 'تناغم', label: 'إدارة'},
+] as const;
+
+const cardStyle = (opacity: number, scale: number): React.CSSProperties => ({
+  opacity,
+  transform: `scale(${scale})`,
+  background: 'rgba(14,14,18,0.72)',
+  border: `1.5px solid ${brand.colors.gold}88`,
+  borderRadius: 18,
+  padding: '36px 64px',
+  minWidth: '40vw',
+  color: brand.colors.ivory,
+  textAlign: 'center',
+  boxShadow: `0 18px 48px rgba(0,0,0,0.45)`,
+});
+
+const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 10,
+      opacity: lit ? 1 : 0.28,
+      transform: `scale(${lit ? 1 : 0.92})`,
+    }}
+  >
+    <div
+      style={{
+        width: 120,
+        height: 120,
+        borderRadius: '50%',
+        border: `2px solid ${lit ? brand.colors.gold : '#555'}`,
+        background: lit ? `${brand.colors.gold}33` : 'rgba(255,255,255,0.04)',
+        boxShadow: lit ? `0 0 22px ${brand.colors.gold}66` : 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: lit ? brand.colors.gold : '#666',
+        }}
+      />
+    </div>
+    <div dir="rtl" style={{fontSize: 32, fontWeight: 700, color: brand.colors.ivory, whiteSpace: 'nowrap'}}>
+      {label}
+    </div>
+  </div>
+);
+
+/** Safe phase opacity — never feeds a non-monotonic interpolate range. */
+const phaseOpacity = (frame: number, start: number, end: number, fade = 18): number => {
+  if (start <= 0 || end <= start) return 0;
+  const hold = Math.max(10, end - start - fade);
+  const local = frame - start;
+  return interpolate(local, [0, 8, hold, hold + fade], [0, 1, 1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+};
+
+export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}) => {
+  ensureBrandFont();
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const timeSec = frame / fps;
+  const spoken = showWordDebug ? currentSpokenWord(SCENE_ID, timeSec) : null;
+
+  const onset = (needle: string, occurrence = 0) =>
+    findWordOnsetFrame(SCENE_ID, needle, fps, occurrence) ?? 0;
+
+  const fEval = onset('تقييم');
+  const fReal = onset('الحقيقي');
+  const fFake = onset('الوهمي');
+  const fShop = onset('المحل');
+  const fBranches = onset('الفروع');
+  const fCountry = onset('دولة');
+  // Shortened VO may omit the errors/fix beat — fall back to modules onset.
+  const fErrors = onset('أخطاء') || onset('الحسابات');
+  const fFix = onset('التثبيت') || fErrors;
+  const fModulesStart = onset('الحسابات');
+  const fHarmony = onset('تناغم');
+  const fLogo = onset('أمارسوفت', 0);
+
+  // Prefer exact-ish logo word — avoid short "ما" false positive via sequential search from end
+  const fLogoSafe = (() => {
+    const a = findWordOnsetFrame(SCENE_ID, 'أمارسوفت', fps, 0);
+    const b = findWordOnsetFrame(SCENE_ID, 'أمارسوفت', fps, 1);
+    // If first hit is too early (< 30s), use second occurrence
+    if (a !== null && a < 30 * fps && b !== null) return b;
+    return a ?? Math.round(durationInFrames * 0.92);
+  })();
+
+  const roleOnsets = ROLES.map((r) => onset(r.key));
+  const factoryOnset = roleOnsets[6]!;
+  const chipOnsets = FACTORY_CHIPS.map((c) => onset(c.key));
+  const moduleOnsets = MODULES.map((m) =>
+    onset(m.key, 'occurrence' in m ? (m.occurrence as number) : 0),
+  );
+
+  const years = spring({
+    frame: frame - Math.round(0.4 * fps),
+    fps,
+    config: {damping: 14, stiffness: 120},
+  });
+
+  const pop = (start: number) =>
+    spring({frame: frame - start, fps, config: {damping: 12, stiffness: 160}});
+
+  // New VO order: eval → profit → roles → map(shop/country) → modules → logo.
+  // Map ends at modules (errors/fix beat may be absent).
+  const mapEnd = fModulesStart > fShop ? fModulesStart : fLogoSafe;
+  const hasFixBeat = onset('أخطاء') > 0 && onset('التثبيت') > 0;
+
+  const evalOp = phaseOpacity(frame, fEval, fReal || roleOnsets[0]!);
+  const profitOp = phaseOpacity(frame, fReal, roleOnsets[0]! || fShop);
+  const rolesOp = phaseOpacity(frame, roleOnsets[0]!, fShop || mapEnd);
+  const mapOp = phaseOpacity(frame, fShop, mapEnd);
+  const fixOp = hasFixBeat ? phaseOpacity(frame, fErrors, fModulesStart) : 0;
+  const modsOp = phaseOpacity(frame, fModulesStart || fHarmony, fLogoSafe);
+  const logoOp = interpolate(frame, [Math.max(0, fLogoSafe - 6), fLogoSafe + 10], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  const mapStep =
+    frame >= fCountry && fCountry > 0
+      ? 2
+      : frame >= fBranches && fBranches > 0
+        ? 1
+        : frame >= fShop && fShop > 0
+          ? 0
+          : -1;
+  const fixProgress = hasFixBeat
+    ? interpolate(frame, [fFix, fFix + 36], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 0;
+  const ringProgress = interpolate(
+    frame,
+    [fHarmony || fModulesStart, (fHarmony || fModulesStart) + 28],
+    [0, 1],
+    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+  );
+
+  const subtitleOp =
+    fCountry > 0 && mapEnd > fCountry + 20
+      ? interpolate(
+          frame,
+          [fCountry, fCountry + 10, Math.min(mapEnd - 8, fCountry + 40), mapEnd],
+          [0, 1, 1, 0],
+          {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+        )
+      : 0;
+
+  return (
+    <SceneShell sceneId={SCENE_ID} isFirst showHairline={false}>
+      <AbsoluteFill
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: brand.fontFamily,
+          overflow: 'hidden',
+        }}
+      >
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(ellipse at 50% 40%, ${brand.colors.gold}18 0%, transparent 55%)`,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          dir="rtl"
+          lang="ar"
+          style={{
+            position: 'absolute',
+            top: 0,
+            height: '20%',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: `scale(${years})`,
+            opacity: years * (1 - logoOp * 0.85),
+            color: brand.colors.ivory,
+            fontSize: 96,
+            fontWeight: 700,
+            borderBottom: `2px solid ${brand.colors.gold}`,
+            paddingBottom: 8,
+          }}
+        >
+          ثلاثة عشر عامًا
+        </div>
+
+        {evalOp > 0.01 ? (
+          <div dir="rtl" style={{...cardStyle(evalOp, pop(fEval)), position: 'absolute', top: '28%'}}>
+            <div style={{fontSize: 84, fontWeight: 700, color: brand.colors.gold}}>تقييم المخزون</div>
+          </div>
+        ) : null}
+
+        {profitOp > 0.01 ? (
+          <div
+            dir="rtl"
+            style={{position: 'absolute', top: '30%', display: 'flex', gap: 28, opacity: profitOp}}
+          >
+            <div style={{...cardStyle(1, pop(fReal)), padding: '32px 56px', minWidth: '22vw'}}>
+              <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
+              <div style={{fontSize: 72, fontWeight: 700, color: '#5FBF6A'}}>حقيقيّ</div>
+            </div>
+            <div style={{...cardStyle(frame >= fFake ? 1 : 0.35, pop(fFake)), padding: '32px 56px', minWidth: '22vw'}}>
+              <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
+              <div style={{fontSize: 72, fontWeight: 700, color: brand.colors.accent}}>وهميّ</div>
+            </div>
+          </div>
+        ) : null}
+
+        {rolesOp > 0.01 ? (
+          <div
+            dir="rtl"
+            style={{
+              position: 'absolute',
+              top: '30%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 22,
+              opacity: rolesOp,
+            }}
+          >
+            <div style={{display: 'flex', gap: 28}}>
+              {ROLES.map((r, i) => (
+                <RoleIcon key={r.key} lit={frame >= roleOnsets[i]!} label={r.label} />
+              ))}
+            </div>
+            {frame >= factoryOnset ? (
+              <div style={{display: 'flex', gap: 12}}>
+                {FACTORY_CHIPS.map((c, i) => {
+                  const lit = frame >= chipOnsets[i]!;
+                  return (
+                    <div
+                      key={c.key}
+                      style={{
+                        padding: '14px 28px',
+                        borderRadius: 999,
+                        border: `1.5px solid ${lit ? brand.colors.gold : '#555'}`,
+                        background: lit ? `${brand.colors.gold}28` : 'rgba(255,255,255,0.04)',
+                        color: lit ? brand.colors.gold : '#777',
+                        fontSize: 28,
+                        fontWeight: 700,
+                        opacity: lit ? 1 : 0.35,
+                        boxShadow: lit ? `0 0 16px ${brand.colors.gold}55` : 'none',
+                      }}
+                    >
+                      {c.label}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {showWordDebug && spoken ? (
+          <div
+            dir="rtl"
+            style={{
+              position: 'absolute',
+              bottom: 48,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '10px 22px',
+              borderRadius: 10,
+              background: 'rgba(0,0,0,0.72)',
+              border: `1px solid ${brand.colors.gold}`,
+              color: brand.colors.gold,
+              fontSize: 28,
+              fontWeight: 700,
+              fontFamily: brand.fontFamily,
+              zIndex: 40,
+            }}
+          >
+            {spoken.word}{' '}
+            <span style={{opacity: 0.65, fontSize: 18}}>
+              @{spoken.startSec.toFixed(2)}s · f{frame}
+            </span>
+          </div>
+        ) : null}
+
+        {mapOp > 0.01 ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: '26%',
+              opacity: mapOp,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 28,
+            }}
+          >
+            <svg width={1100} height={420} viewBox="0 0 720 320">
+              <circle
+                cx={160}
+                cy={160}
+                r={mapStep >= 0 ? 28 : 10}
+                fill={brand.colors.gold}
+                opacity={mapStep >= 0 ? 1 : 0.2}
+              />
+              {[0, 1, 2, 3].map((i) => {
+                const a = (-40 + i * 28) * (Math.PI / 180);
+                const x = 360 + Math.cos(a) * 90;
+                const y = 160 + Math.sin(a) * 70;
+                return (
+                  <g key={i} opacity={mapStep >= 1 ? 1 : 0.15}>
+                    <line
+                      x1={160}
+                      y1={160}
+                      x2={x}
+                      y2={y}
+                      stroke={brand.colors.gold}
+                      strokeWidth={2}
+                    />
+                    <circle cx={x} cy={y} r={16} fill={`${brand.colors.gold}cc`} />
+                  </g>
+                );
+              })}
+              {[
+                {x: 560, y: 80, label: 'UAE'},
+                {x: 620, y: 160, label: 'KSA'},
+                {x: 560, y: 240, label: 'OMN'},
+              ].map((n) => (
+                <g key={n.label} opacity={mapStep >= 2 ? 1 : 0.12}>
+                  <line
+                    x1={360}
+                    y1={160}
+                    x2={n.x}
+                    y2={n.y}
+                    stroke={brand.colors.gold}
+                    strokeWidth={2}
+                  />
+                  <circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={22}
+                    fill={brand.colors.ink}
+                    stroke={brand.colors.gold}
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={n.x}
+                    y={n.y + 5}
+                    textAnchor="middle"
+                    fill={brand.colors.gold}
+                    fontSize={14}
+                    fontFamily={brand.fontFamily}
+                  >
+                    {n.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+            <div
+              dir="rtl"
+              style={{
+                display: 'flex',
+                gap: 18,
+                alignItems: 'center',
+                fontSize: 32,
+                fontWeight: 700,
+                color: brand.colors.ivory,
+              }}
+            >
+              <span
+                style={{
+                  opacity: mapStep >= 0 ? 1 : 0.35,
+                  color: mapStep === 0 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
+                محلّ واحد
+              </span>
+              <span style={{opacity: 0.5}}>→</span>
+              <span
+                style={{
+                  opacity: mapStep >= 1 ? 1 : 0.35,
+                  color: mapStep === 1 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
+                فروع
+              </span>
+              <span style={{opacity: 0.5}}>→</span>
+              <span
+                style={{
+                  opacity: mapStep >= 2 ? 1 : 0.35,
+                  color: mapStep === 2 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
+                أكثر من دولة
+              </span>
+            </div>
+            <div
+              dir="rtl"
+              style={{
+                opacity: subtitleOp,
+                fontSize: 28,
+                fontWeight: 600,
+                color: brand.colors.gold,
+              }}
+            >
+              عدّة دول، تقريرٌ واحد
+            </div>
+          </div>
+        ) : null}
+
+        {fixOp > 0.01 ? (
+          <div
+            dir="rtl"
+            style={{
+              position: 'absolute',
+              top: '32%',
+              opacity: fixOp,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 22,
+            }}
+          >
+            <div style={{fontSize: 72, fontWeight: 700, color: brand.colors.ivory}}>أخطاء التثبيت</div>
+            <div
+              style={{
+                width: 640,
+                height: 28,
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.12)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${fixProgress * 100}%`,
+                  height: '100%',
+                  background: `linear-gradient(90deg, ${brand.colors.accent}, #5FBF6A)`,
+                }}
+              />
+            </div>
+            <div
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                color: fixProgress > 0.85 ? '#5FBF6A' : brand.colors.accent,
+              }}
+            >
+              {fixProgress > 0.85 ? 'تمّ الإصلاح' : 'جاري الإصلاح…'}
+            </div>
+          </div>
+        ) : null}
+
+        {modsOp > 0.01 ? (
+          <div style={{position: 'absolute', top: '18%', width: 1152, height: 700, opacity: modsOp}}>
+            <svg width={1152} height={700} viewBox="0 0 1152 700" style={{position: 'absolute', inset: 0}}>
+              <circle
+                cx={576}
+                cy={350}
+                r={280}
+                fill="none"
+                stroke={brand.colors.gold}
+                strokeWidth={3}
+                strokeDasharray={`${ringProgress * 1760} 1760`}
+                opacity={0.85}
+              />
+            </svg>
+            {MODULES.map((m, i) => {
+              const lit = frame >= moduleOnsets[i]!;
+              const angle = (-90 + i * 60) * (Math.PI / 180);
+              const radius = interpolate(frame, [fHarmony, fHarmony + 24], [340, 280], {
+                extrapolateLeft: 'clamp',
+                extrapolateRight: 'clamp',
+              });
+              const x = 576 + Math.cos(angle) * radius;
+              const y = 350 + Math.sin(angle) * radius;
+              const s = lit ? pop(moduleOnsets[i]!) : 0.6;
+              return (
+                <div
+                  key={m.label}
+                  dir="rtl"
+                  style={{
+                    position: 'absolute',
+                    left: x - 110,
+                    top: y - 40,
+                    width: 220,
+                    height: 80,
+                    borderRadius: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: lit ? `${brand.colors.gold}22` : 'rgba(255,255,255,0.05)',
+                    border: `1.5px solid ${lit ? brand.colors.gold : '#555'}`,
+                    color: lit ? brand.colors.gold : '#888',
+                    fontSize: 36,
+                    fontWeight: 700,
+                    opacity: lit ? 1 : 0.35,
+                    transform: `scale(${s})`,
+                  }}
+                >
+                  {m.label}
+                </div>
+              );
+            })}
+            <div
+              dir="rtl"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: 42,
+                fontWeight: 700,
+                color: brand.colors.ivory,
+                opacity: ringProgress,
+              }}
+            >
+              تناغمٌ واحد
+            </div>
+          </div>
+        ) : null}
+
+        <div
+          style={{
+            position: 'absolute',
+            top: '38%',
+            opacity: logoOp,
+            transform: `scale(${interpolate(logoOp, [0, 1], [0.86, 1])})`,
+          }}
+        >
+          <LogoWordmark size={128} markWidth={320} sweepAt={fLogoSafe + 4} />
+        </div>
+      </AbsoluteFill>
+    </SceneShell>
+  );
 };
 
 export default S01;

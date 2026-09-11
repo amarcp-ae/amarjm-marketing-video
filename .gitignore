@@ -7,3 +7,5 @@ node_modules/
 .DS_Store
 *.log
 .remotion/
+artifacts/
+assets/video/.tmp/

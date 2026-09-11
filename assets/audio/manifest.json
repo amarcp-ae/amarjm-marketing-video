@@ -8,78 +8,134 @@
     "stability": 0.45,
     "similarity_boost": 0.8,
     "style": 0.2,
-    "speed": 0.95
+    "speed": 0.95,
+    "loudnorm": {
+      "I": -16,
+      "TP": -1.5
+    }
   },
   "scenes": {
     "S01": {
       "file": "vo/S01.mp3",
-      "durationSec": 23.684,
-      "timestampsFile": "vo/S01.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 27.145,
+      "lastSpeechSec": 26.145,
+      "holdSec": 1,
+      "timestampsFile": "vo/S01.timestamps.json",
+      "wordCount": 42
     },
     "S02": {
       "file": "vo/S02.mp3",
-      "durationSec": 11.935,
-      "timestampsFile": "vo/S02.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 11.113,
+      "lastSpeechSec": 10.913,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S02.timestamps.json",
+      "wordCount": 14
     },
     "S03": {
       "file": "vo/S03.mp3",
-      "durationSec": 10.449,
-      "timestampsFile": "vo/S03.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 5.541,
+      "lastSpeechSec": 5.341,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S03.timestamps.json",
+      "wordCount": 7
     },
     "S04": {
       "file": "vo/S04.mp3",
-      "durationSec": 11.471,
-      "timestampsFile": "vo/S04.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 6.702,
+      "lastSpeechSec": 6.502,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S04.timestamps.json",
+      "wordCount": 12
     },
     "S05": {
       "file": "vo/S05.mp3",
-      "durationSec": 8.684,
-      "timestampsFile": "vo/S05.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 6.887,
+      "lastSpeechSec": 6.687,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S05.timestamps.json",
+      "wordCount": 9
     },
     "S06": {
       "file": "vo/S06.mp3",
-      "durationSec": 16.672,
-      "timestampsFile": "vo/S06.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 9.349,
+      "lastSpeechSec": 9.149,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S06.timestamps.json",
+      "wordCount": 8
     },
     "S07": {
       "file": "vo/S07.mp3",
-      "durationSec": 13.514,
-      "timestampsFile": "vo/S07.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 10.185,
+      "lastSpeechSec": 9.985,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S07.timestamps.json",
+      "wordCount": 9
     },
     "S08": {
       "file": "vo/S08.mp3",
-      "durationSec": 12.539,
-      "timestampsFile": "vo/S08.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 6.609,
+      "lastSpeechSec": 6.409,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S08.timestamps.json",
+      "wordCount": 9
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 12.26,
-      "timestampsFile": "vo/S09.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 7.445,
+      "lastSpeechSec": 7.245,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S09.timestamps.json",
+      "wordCount": 9
     },
     "S10": {
       "file": "vo/S10.mp3",
-      "durationSec": 9.427,
-      "timestampsFile": "vo/S10.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 5.448,
+      "lastSpeechSec": 5.248,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S10.timestamps.json",
+      "wordCount": 7
     },
     "S11": {
       "file": "vo/S11.mp3",
-      "durationSec": 11.331,
-      "timestampsFile": "vo/S11.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 6.33,
+      "lastSpeechSec": 6.13,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S11.timestamps.json",
+      "wordCount": 7
     },
     "S12": {
       "file": "vo/S12.mp3",
-      "durationSec": 14.071,
-      "timestampsFile": "vo/S12.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 6.051,
+      "lastSpeechSec": 5.851,
+      "holdSec": 0.2,
+      "timestampsFile": "vo/S12.timestamps.json",
+      "wordCount": 8
     },
     "S13": {
       "file": "vo/S13.mp3",
-      "durationSec": 8.173,
-      "timestampsFile": "vo/S13.timestamps.json"
+      "voice_id": "usjDi9nBY6UHvtKrL4ba",
+      "durationSec": 11.138,
+      "lastSpeechSec": 8.638,
+      "holdSec": 2.5,
+      "timestampsFile": "vo/S13.timestamps.json",
+      "wordCount": 10
     }
   },
   "music": {
-    "file": "music/bed.mp3",
-    "durationSec": 100
+    "file": "music/bed-v2.mp3",
+    "durationSec": 110
   },
   "sfx": [
     {

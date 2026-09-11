@@ -135,16 +135,22 @@ const appendNote = async (scene: string, note: string, sourceUrl = ''): Promise<
 
 /* --------------------------- Page preparation ---------------------------- */
 
-const hideAmarcpEmailNodes = async (page: Page): Promise<void> => {
+const hideSensitiveDeskNodes = async (page: Page): Promise<void> => {
   await page.evaluate(() => {
-    const pattern = /@amarcp\.ae/i;
+    const patterns = [/@amarcp\.ae/i, /Hashem\s*Round\s*2/i, /Round\s*2/i, /\bRound2\b/i];
     const hide: Element[] = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
     let node = walker.nextNode();
     while (node) {
       const el = node as Element;
       const text = (el.textContent ?? '').trim();
-      if (text && pattern.test(text) && text.length < 200) {
+      if (
+        text &&
+        text.length < 220 &&
+        patterns.some((p) => p.test(text)) &&
+        // Prefer leaf-ish nodes so we don't hide the whole desk
+        el.childElementCount <= 3
+      ) {
         hide.push(el);
       }
       node = walker.nextNode();
@@ -158,47 +164,95 @@ const hideAmarcpEmailNodes = async (page: Page): Promise<void> => {
 
 /** Dismiss multi-company selector shown after login / on desk. */
 const dismissCompanyPicker = async (page: Page): Promise<void> => {
-  const modal = page.locator(
-    '.amarjm-desk-company-dialog.show, .modal.show:has-text("Select Company"), .modal.show:has-text("Choose Company")',
-  );
-  if (
-    (await modal.count()) === 0 ||
-    !(await modal
-      .first()
-      .isVisible()
-      .catch(() => false))
-  ) {
-    return;
-  }
-  console.log('Company picker detected — selecting Al Noor Jewellery - Dubai');
-  const dlg = modal.first();
-  // Prefer the AmarJM company chip button; fall back to visible text in the dialog.
-  const chip = dlg.locator(`button.amarjm-dcg-item:has-text("${COMPANY_DUBAI}")`);
-  if ((await chip.count()) > 0) {
-    await chip
-      .first()
-      .click({timeout: 5_000})
-      .catch(() => undefined);
-  } else {
-    const dubai = dlg.getByText(COMPANY_DUBAI, {exact: false});
-    if ((await dubai.count()) > 0) {
-      await dubai
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const modal = page.locator(
+      [
+        '.amarjm-desk-company-dialog.show',
+        '.modal.show:has-text("Select Company")',
+        '.modal.show:has-text("Choose Company")',
+        '.modal.show:has-text("Select company")',
+        '.modal.show:has-text("Hashem Round")',
+      ].join(', '),
+    );
+    if (
+      (await modal.count()) === 0 ||
+      !(await modal
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      return;
+    }
+    console.log(`Company picker detected (try ${attempt + 1}) — selecting ${COMPANY_DUBAI}`);
+    const dlg = modal.first();
+    const chip = dlg.locator(
+      `button.amarjm-dcg-item:has-text("${COMPANY_DUBAI}"), button:has-text("${COMPANY_DUBAI}"), .amarjm-dcg-item:has-text("${COMPANY_DUBAI}")`,
+    );
+    if ((await chip.count()) > 0) {
+      await chip
+        .first()
+        .click({timeout: 5_000, force: true})
+        .catch(() => undefined);
+    } else {
+      const dubai = dlg.getByText(COMPANY_DUBAI, {exact: false});
+      if ((await dubai.count()) > 0) {
+        await dubai
+          .first()
+          .click({timeout: 5_000, force: true})
+          .catch(() => undefined);
+      }
+    }
+    await page.waitForTimeout(300);
+    const cont = dlg.locator(
+      'button:has-text("Continue"), button.btn-modal-primary, button:has-text("Select"), button.btn-primary',
+    );
+    if ((await cont.count()) > 0) {
+      await cont
         .first()
         .click({timeout: 5_000, force: true})
         .catch(() => undefined);
     }
+    await dlg.waitFor({state: 'hidden', timeout: 15_000}).catch(() => undefined);
+    await page.waitForTimeout(400);
   }
-  const cont = dlg.locator(
-    'button:has-text("Continue"), button.btn-modal-primary, button:has-text("Select"), button.btn-primary',
+};
+
+/** Assert no company/login modal is covering the app before a marketing still. */
+const assertNoBlockingModal = async (page: Page, scene: string): Promise<void> => {
+  await dismissCompanyPicker(page);
+  const cssBlockers = page.locator(
+    [
+      '.modal.show:has-text("Select Company")',
+      '.modal.show:has-text("Choose Company")',
+      '.modal.show:has-text("Welcome Back")',
+      '.modal.show:has-text("Hashem Round")',
+      '.amarjm-desk-company-dialog.show',
+      'form:has-text("Welcome Back")',
+    ].join(', '),
   );
-  if ((await cont.count()) > 0) {
-    await cont
+  if (
+    (await cssBlockers.count()) > 0 &&
+    (await cssBlockers.first().isVisible().catch(() => false))
+  ) {
+    const txt = await cssBlockers
       .first()
-      .click({timeout: 5_000})
-      .catch(() => undefined);
+      .innerText()
+      .catch(() => '');
+    throw new Error(`${scene}: blocking modal still visible before shot: ${txt.slice(0, 160)}`);
   }
-  await dlg.waitFor({state: 'hidden', timeout: 15_000}).catch(() => undefined);
-  await page.waitForTimeout(500);
+  // Separate text engines — never mix text= into a CSS selector string.
+  for (const label of ['Welcome Back', 'Select Company', 'Hashem Round 2']) {
+    const hit = page.getByText(label, {exact: false});
+    if ((await hit.count()) > 0 && (await hit.first().isVisible().catch(() => false))) {
+      // Only fail if it's inside a visible modal / dialog chrome.
+      const inModal = page.locator('.modal.show, .amarjm-desk-company-dialog.show').filter({
+        hasText: label,
+      });
+      if ((await inModal.count()) > 0 && (await inModal.first().isVisible().catch(() => false))) {
+        throw new Error(`${scene}: blocking copy "${label}" still visible`);
+      }
+    }
+  }
 };
 
 const prepareForShot = async (
@@ -208,7 +262,7 @@ const prepareForShot = async (
   const dismissOverlays = opts.dismissOverlays !== false;
   await dismissCompanyPicker(page);
   await page.addStyleTag({path: HIDE_CSS_PATH});
-  await hideAmarcpEmailNodes(page);
+  await hideSensitiveDeskNodes(page);
   try {
     await page.waitForLoadState('networkidle', {timeout: 30_000});
   } catch {
@@ -223,6 +277,25 @@ const prepareForShot = async (
     await page.waitForTimeout(400);
   } else {
     await page.waitForTimeout(400);
+  }
+  // Assert company picker / blocking modals are gone before a marketing shot.
+  // When dismissOverlays=false (POS payment), do NOT Escape-dismiss .modal.show —
+  // that is often the payment dialog itself.
+  await dismissCompanyPicker(page);
+  if (dismissOverlays) {
+    const blocking = page.locator('.modal.show');
+    if ((await blocking.count()) > 0) {
+      const visible = await blocking
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (visible) {
+        console.warn('prepareForShot: .modal.show still visible — dismissing again');
+        await page.keyboard.press('Escape').catch(() => undefined);
+        await dismissCompanyPicker(page);
+        await page.waitForTimeout(400);
+      }
+    }
   }
 };
 
@@ -614,10 +687,13 @@ const preparePosDesk = async (page: Page): Promise<boolean> => {
     const jp = window.frappe && window.frappe.pages && window.frappe.pages['pos-jewellery'] && window.frappe.pages['pos-jewellery'].jewellery_pos;
     return (jp && (jp.pos_profile || jp.resolved_pos_profile || jp.profile_name)) || null;
   })()`);
-  if (!already) {
+  const alreadyStr = typeof already === 'string' ? already : already ? String(already) : '';
+  const isDubai = /dubai/i.test(alreadyStr) && !/round\s*2|hashem/i.test(alreadyStr);
+  if (!isDubai) {
+    console.log('S07 POS profile not Dubai (got:', alreadyStr || 'null', ') — forcing Dubai');
     await selectDubaiProfile();
   } else {
-    console.log('S07 POS profile already set:', already);
+    console.log('S07 POS profile already Dubai:', alreadyStr);
   }
 
   await page
@@ -865,16 +941,51 @@ const captureS02 = async (
     return;
   }
   const route = `/app/metal-rate/${encodeURIComponent(doc.name)}`;
-  await gotoApp(page, baseUrl, route);
-  await capturePng(page, {scene: 'S02', relativeFile: 'S02/metal-rate.png'});
+
+  const openMetalRate = async (p: Page) => {
+    await gotoApp(p, baseUrl, route);
+    await dismissCompanyPicker(p);
+    // Re-assert route — Escape/picker can bounce to desk home.
+    if (!p.url().includes('/metal-rate/')) {
+      await gotoApp(p, baseUrl, route);
+      await dismissCompanyPicker(p);
+    }
+    await p
+      .locator('.form-layout, [data-doctype="Metal Rate"], .page-title:has-text("Metal Rate")')
+      .first()
+      .waitFor({state: 'visible', timeout: 20_000})
+      .catch(() => undefined);
+  };
+
+  await openMetalRate(page);
+  // Soft prepare — avoid Escape which can leave the form for desk home.
+  await prepareForShot(page, {dismissOverlays: false});
+  await dismissCompanyPicker(page);
+  await assertNoBlockingModal(page, 'S02');
+  const formVisible = await page
+    .locator('.form-layout, [data-doctype="Metal Rate"], .page-title:has-text("Metal Rate")')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (!formVisible) {
+    await appendNote('S02', 'Metal Rate form not visible — retrying navigation');
+    await openMetalRate(page);
+  }
+  await capturePng(page, {
+    scene: 'S02',
+    relativeFile: 'S02/metal-rate.png',
+    dismissOverlays: false,
+  });
 
   await withVideoPage(
     browser,
     cookies,
     async (vp) => {
-      await gotoApp(vp, baseUrl, route);
-      await prepareForShot(vp);
-      await vp.waitForTimeout(6_000);
+      await openMetalRate(vp);
+      await prepareForShot(vp, {dismissOverlays: false});
+      await assertNoBlockingModal(vp, 'S02-video');
+      // Settle on the live rate form so the ticker overlay has real UI under it.
+      await vp.waitForTimeout(4_000);
     },
     'S02-metal-rate.webm',
     'S02',
@@ -1275,12 +1386,12 @@ const openPosPayment = async (page: Page): Promise<boolean> => {
     .first()
     .innerText()
     .catch(() => '');
-  console.log('S07 openPosPayment', {
-    visible,
-    hasCash: /\bCash\b/i.test(modalText),
-    hasCard: /Card/i.test(modalText),
-  });
-  return visible && /\bCash\b/i.test(modalText) && /Card/i.test(modalText);
+  const hasCash = /\bCash\b/i.test(modalText);
+  const hasCreditCard = /Credit\s*Card/i.test(modalText) || /\bCard\b/i.test(modalText);
+  const isRound2 = /Round\s*2|Hashem|R2\b/i.test(modalText);
+  console.log('S07 openPosPayment', {visible, hasCash, hasCreditCard, isRound2});
+  // Dubai capture: Cash + Credit Card. Reject Round2 Bank-mode dialogs.
+  return visible && hasCash && hasCreditCard && !isRound2;
 };
 
 const captureS07 = async (
@@ -1359,18 +1470,39 @@ const captureS07 = async (
         dismissOverlays: false,
       });
 
-      // Payment step — Cash + Card visible; do not complete the order.
+      // Assert Dubai POS chrome before payment still.
+      const headerText = await vp.locator('body').innerText().catch(() => '');
+      if (!/Al Noor Jewellery\s*-\s*Dubai/i.test(headerText)) {
+        console.warn('S07: header missing "Al Noor Jewellery - Dubai" — retrying Dubai profile');
+        await preparePosDesk(vp);
+      }
+      const header2 = await vp.locator('body').innerText().catch(() => '');
+      if (/Round\s*2|Hashem Round/i.test(header2)) {
+        await appendNote('S07', 'POS still on Round2/Hashem after Dubai select — aborting payment capture');
+        return;
+      }
+
+      // Payment step — Cash + Credit Card (Dubai); do not complete the order.
       if (scanned) {
         const paid = await openPosPayment(vp);
         if (paid) {
           await vp.waitForTimeout(800);
-          await capturePng(vp, {
-            scene: 'S07',
-            relativeFile: 'S07/pos-payment-dialog.png',
-            dismissOverlays: false,
-          });
+          const payText = await vp
+            .locator('.jpos-payment-modal.show, .modal.jpos-payment-modal.show')
+            .first()
+            .innerText()
+            .catch(() => '');
+          if (!/\bCash\b/i.test(payText) || !/Card/i.test(payText) || /Round\s*2|Hashem/i.test(payText)) {
+            await appendNote('S07', `Payment dialog rejected: ${payText.slice(0, 200)}`);
+          } else {
+            await capturePng(vp, {
+              scene: 'S07',
+              relativeFile: 'S07/pos-payment-dialog.png',
+              dismissOverlays: false,
+            });
+          }
         } else {
-          await appendNote('S07', 'Checkout/payment screen did not open with Cash + Card');
+          await appendNote('S07', 'Checkout/payment screen did not open with Cash + Credit Card (Dubai)');
         }
       }
     },
@@ -1501,12 +1633,29 @@ const captureS10 = async (page: Page, baseUrl: string): Promise<void> => {
   await capturePng(page, {scene: 'S10', relativeFile: 'S10/support-dialog.png'});
 };
 
-const captureS12 = async (page: Page, baseUrl: string): Promise<void> => {
+const captureS12 = async (page: Page, baseUrl: string, context: BrowserContext): Promise<void> => {
   await dismissCompanyPicker(page);
   await gotoApp(page, baseUrl, '/app/home');
   await dismissCompanyPicker(page);
   await prepareForShot(page);
+  await assertNoBlockingModal(page, 'S12-home');
   await capturePng(page, {scene: 'S12', relativeFile: 'S12/home.png'});
+
+  // Purchase Invoice list/form for the second S12 beat (no black frames).
+  await dismissCompanyPicker(page);
+  const pi = await firstDoc(context, baseUrl, 'Purchase Invoice', [
+    ['company', '=', COMPANY_DUBAI],
+    ['docstatus', '=', 1],
+  ]);
+  if (pi) {
+    await gotoApp(page, baseUrl, `/app/purchase-invoice/${encodeURIComponent(pi.name)}`);
+  } else {
+    await gotoApp(page, baseUrl, '/app/purchase-invoice');
+  }
+  await dismissCompanyPicker(page);
+  await prepareForShot(page);
+  await assertNoBlockingModal(page, 'S12-purchase');
+  await capturePng(page, {scene: 'S12', relativeFile: 'S12/purchase-invoice.png'});
 };
 
 /* --------------------------------- Main ---------------------------------- */
@@ -1570,7 +1719,7 @@ async function main(): Promise<void> {
     await run('S08', () => captureS08(page, baseUrl, context));
     await run('S09', () => captureS09(page, baseUrl, context));
     await run('S10', () => captureS10(page, baseUrl));
-    await run('S12', () => captureS12(page, baseUrl));
+    await run('S12', () => captureS12(page, baseUrl, context));
 
     console.log('--- capture summary ---');
     console.log(`POS route: ${discoveredPosRoute ?? '(not found)'}`);
