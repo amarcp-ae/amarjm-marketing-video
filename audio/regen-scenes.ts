@@ -13,7 +13,12 @@ const VO_DIR = path.join(ROOT, 'assets', 'audio', 'vo');
 const MANIFEST_PATH = path.join(ROOT, 'assets', 'audio', 'manifest.json');
 const FRAMES_PATH = path.join(ROOT, 'src', 'sceneFrames.json');
 const FPS = 30;
-const TAIL_SEC = 0.4;
+/** Non-VO hold after last spoken word. */
+const DEFAULT_TAIL_SEC = 0.3;
+const SCENE_TAIL_SEC: Record<string, number> = {
+  S01: 1.5, // logo reveal
+  S13: 3.0, // end card
+};
 
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'usjDi9nBY6UHvtKrL4ba';
 const MODEL_ID = 'eleven_multilingual_v2';
@@ -21,8 +26,10 @@ const VOICE_SETTINGS = {
   stability: 0.3,
   similarity_boost: 0.85,
   style: 0.55,
-  speed: 1.05,
+  speed: 1.1,
 } as const;
+
+const sceneTailSec = (id: string) => SCENE_TAIL_SEC[id] ?? DEFAULT_TAIL_SEC;
 
 type Alignment = {
   characters: string[];
@@ -102,7 +109,7 @@ function alignmentToWords(alignment: Alignment | null | undefined): WordTimestam
   return words;
 }
 
-async function synthesizeScene(apiKey: string, text: string) {
+async function synthesizeScene(apiKey: string, text: string, sceneId: string) {
   const res = await elFetch(
     apiKey,
     `/text-to-speech/${encodeURIComponent(VOICE_ID)}/with-timestamps`,
@@ -125,11 +132,15 @@ async function synthesizeScene(apiKey: string, text: string) {
   if (!json.audio_base64) throw new Error('missing audio_base64');
   const alignment = json.alignment ?? json.normalized_alignment ?? null;
   const ends = alignment?.character_end_times_seconds;
-  const durationSec = (ends?.length ? (ends[ends.length - 1] ?? 0) : 0) + TAIL_SEC;
+  const lastSpeech = ends?.length ? (ends[ends.length - 1] ?? 0) : 0;
+  const holdSec = sceneTailSec(sceneId);
+  const durationSec = lastSpeech + holdSec;
   return {
     audio: Buffer.from(json.audio_base64, 'base64'),
     alignment,
     durationSec,
+    lastSpeechSec: lastSpeech,
+    holdSec,
     words: alignmentToWords(alignment),
   };
 }
@@ -160,7 +171,11 @@ async function main() {
     const entry = byId[id];
     if (!entry) throw new Error(`Scene ${id} not in script`);
     console.log(`Regenerating ${id}…`);
-    const {audio, alignment, durationSec, words} = await synthesizeScene(apiKey, entry.text);
+    const {audio, alignment, durationSec, lastSpeechSec, holdSec, words} = await synthesizeScene(
+      apiKey,
+      entry.text,
+      id,
+    );
     await writeFile(path.join(VO_DIR, `${id}.mp3`), audio);
     await writeFile(
       path.join(VO_DIR, `${id}.timestamps.json`),
@@ -169,6 +184,8 @@ async function main() {
           scene: id,
           text: entry.text,
           durationSec: Number(durationSec.toFixed(3)),
+          lastSpeechSec: Number(lastSpeechSec.toFixed(3)),
+          holdSec: Number(holdSec.toFixed(3)),
           words,
           alignment: alignment
             ? {
@@ -187,11 +204,15 @@ async function main() {
     scenes[id] = {
       file: `vo/${id}.mp3`,
       durationSec: Number(durationSec.toFixed(3)),
+      lastSpeechSec: Number(lastSpeechSec.toFixed(3)),
+      holdSec: Number(holdSec.toFixed(3)),
       timestampsFile: `vo/${id}.timestamps.json`,
       wordCount: words.length,
     };
     manifest.scenes = scenes;
-    console.log(`  ${id}: ${durationSec.toFixed(2)}s → ${frames[id]}f (${words.length} words)`);
+    console.log(
+      `  ${id}: speech ${lastSpeechSec.toFixed(2)}s + hold ${holdSec.toFixed(2)}s → ${durationSec.toFixed(2)}s / ${frames[id]}f (${words.length} words)`,
+    );
   }
 
   manifest.voice = {
