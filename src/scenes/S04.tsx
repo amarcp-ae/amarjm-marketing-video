@@ -9,24 +9,19 @@ import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
 
 const SCENE_ID: SceneId = 'S04';
-
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
-const NODES = [
-  {id: 'UAE', x: 150, y: 100, label: 'UAE'},
-  {id: 'OMN', x: 290, y: 190, label: 'OMN'},
-  {id: 'KSA', x: 90, y: 210, label: 'KSA'},
-  {id: 'BHR', x: 220, y: 70, label: 'BHR'},
-];
+const TABS = [
+  {id: 'dxb', label: 'دبي'},
+  {id: 'mct', label: 'مسقط'},
+  {id: 'ruh', label: 'الرياض'},
+] as const;
 
 export const S04: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const lineProgress = interpolate(frame, [18, 70], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const {fps, durationInFrames: dur} = useVideoConfig();
+  const tab = Math.min(2, Math.floor(frame / Math.max(1, Math.floor(dur / 3))));
 
   return (
     <SceneShell sceneId={SCENE_ID}>
@@ -39,75 +34,60 @@ export const S04: React.FC = () => {
           {text: 'واحد', gold: true},
         ]}
       />
-      <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
-        <DeviceStage
-          src={ASSETS.screens.S04.jewelleryGrossProfit}
-          width={1480}
-          height={760}
-          tiltDeg={3}
-          crop={{objectPosition: '48% 42%', scale: 1.55}}
-          callout={{label: 'التقرير', x: 620, y: 300, delay: Math.round(0.9 * fps)}}
-        />
-        <svg
-          width={360}
-          height={280}
-          style={{position: 'absolute', right: 48, bottom: 100, opacity: 0.95}}
-        >
-          <line
-            x1={NODES[0].x}
-            y1={NODES[0].y}
-            x2={NODES[1].x}
-            y2={NODES[1].y}
-            stroke={brand.colors.gold}
-            strokeWidth={2}
-            strokeDasharray={`${lineProgress * 220} 220`}
+      <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 24}}>
+        <div style={{position: 'relative'}}>
+          <DeviceStage
+            src={ASSETS.screens.S04.jewelleryGrossProfit}
+            width={1520}
+            height={780}
+            tiltDeg={3}
+            crop={{objectPosition: '48% 42%', scale: 1.45}}
+            callout={{label: 'التقرير', x: 640, y: 300, delay: Math.round(0.7 * fps)}}
           />
-          <line
-            x1={NODES[0].x}
-            y1={NODES[0].y}
-            x2={NODES[2].x}
-            y2={NODES[2].y}
-            stroke={brand.colors.gold}
-            strokeWidth={2}
-            strokeDasharray={`${lineProgress * 200} 200`}
-          />
-          <line
-            x1={NODES[0].x}
-            y1={NODES[0].y}
-            x2={NODES[3].x}
-            y2={NODES[3].y}
-            stroke={brand.colors.gold}
-            strokeWidth={2}
-            strokeDasharray={`${lineProgress * 160} 160`}
-          />
-          {NODES.map((n, i) => {
-            const pulse = 1 + Math.sin(frame / 11 + i) * 0.18;
-            return (
-              <g key={n.id}>
-                <circle cx={n.x} cy={n.y} r={9 * pulse} fill={brand.colors.gold} opacity={0.95} />
-                <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={16 * pulse}
-                  fill="none"
-                  stroke={brand.colors.gold}
-                  strokeWidth={1}
-                  opacity={0.35}
-                />
-                <text
-                  x={n.x}
-                  y={n.y + 28}
-                  textAnchor="middle"
-                  fill={brand.colors.ivory}
-                  fontSize={15}
-                  fontFamily={brand.fontFamily}
+          <div
+            dir="rtl"
+            lang="ar"
+            style={{
+              position: 'absolute',
+              top: 18,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: 8,
+              padding: 6,
+              borderRadius: 999,
+              background: 'rgba(14,14,18,0.88)',
+              border: `1px solid ${brand.colors.gold}`,
+              fontFamily: brand.fontFamily,
+              zIndex: 5,
+            }}
+          >
+            {TABS.map((t, i) => {
+              const on = i === tab;
+              const pulse = on ? 1 + Math.sin(frame / 8) * 0.03 : 1;
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 999,
+                    background: on ? brand.colors.gold : 'transparent',
+                    color: on ? brand.colors.ink : brand.colors.ivory,
+                    fontWeight: 700,
+                    fontSize: 18,
+                    transform: `scale(${pulse})`,
+                    opacity: interpolate(frame, [i * 4, i * 4 + 10], [0.5, 1], {
+                      extrapolateLeft: 'clamp',
+                      extrapolateRight: 'clamp',
+                    }),
+                  }}
                 >
-                  {n.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                  {t.label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </AbsoluteFill>
     </SceneShell>
   );

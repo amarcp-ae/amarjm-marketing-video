@@ -1,5 +1,14 @@
 import React from 'react';
-import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  Img,
+  Sequence,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {DeviceStage} from '../components/DeviceStage';
 import {KineticHeadline} from '../components/KineticHeadline';
@@ -9,21 +18,24 @@ import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
 
 const SCENE_ID: SceneId = 'S12';
-
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
-const PROMPT = 'أغلق وردية دبي وأرسل التقرير';
+const COMMAND = 'أصدر فاتورة مشتريات للعميل محمد';
 
+/** Voice/text report dialog → purchase invoice with ✓ تمّ التنفيذ. */
 export const S12: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const typeStart = Math.round(0.7 * fps);
-  const charsShown = Math.min(PROMPT.length, Math.max(0, Math.floor((frame - typeStart) / 2)));
-  const typed = PROMPT.slice(0, charsShown);
-  const pulse = 1 + Math.sin(frame / 6) * 0.16;
+  const {fps, durationInFrames: dur} = useVideoConfig();
+  const half = Math.floor(dur / 2);
+
+  const wave = 1 + Math.sin(frame / 5) * 0.35;
+  const textGlow = interpolate(frame, [Math.round(0.9 * fps), Math.round(1.4 * fps)], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
   const check = spring({
-    frame: frame - (typeStart + PROMPT.length * 2 + 8),
+    frame: frame - (half + Math.round(0.5 * fps)),
     fps,
     config: {damping: 12, stiffness: 160},
   });
@@ -39,80 +51,115 @@ export const S12: React.FC = () => {
         ]}
       />
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
-        <DeviceStage
-          src={ASSETS.screens.S04.jewelleryGrossProfit}
-          width={1480}
-          height={760}
-          tiltDeg={3}
-          crop={{objectPosition: '48% 38%', scale: 1.4}}
-          callout={{label: 'صوت', x: 200, y: 520, delay: Math.round(1.1 * fps)}}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            left: 140,
-            bottom: 150,
-            width: 64,
-            height: 64,
-            borderRadius: '50%',
-            backgroundColor: brand.colors.accent,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: `0 0 0 ${10 * pulse}px ${brand.colors.gold}33`,
-          }}
-        >
-          <div
-            style={{
-              width: 18,
-              height: 28,
-              borderRadius: 9,
-              background: brand.colors.ivory,
-            }}
-          />
-        </div>
-        <div
-          dir="rtl"
-          lang="ar"
-          style={{
-            position: 'absolute',
-            bottom: 160,
-            left: 230,
-            minWidth: 520,
-            backgroundColor: 'rgba(247,243,235,0.94)',
-            color: brand.colors.ink,
-            borderRadius: 999,
-            padding: '12px 22px',
-            fontSize: 26,
-            fontWeight: 500,
-            fontFamily: brand.fontFamily,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <span>{typed}</span>
-          <span
-            style={{
-              opacity: Math.floor(frame / 8) % 2 === 0 ? 1 : 0,
-              color: brand.colors.gold,
-            }}
-          >
-            |
-          </span>
-          <span
-            style={{
-              marginRight: 'auto',
-              transform: `scale(${check})`,
-              opacity: check,
-              color: '#2e7d32',
-              fontWeight: 700,
-              fontSize: 28,
-            }}
-          >
-            ✓
-          </span>
-        </div>
+        <Sequence from={0} durationInFrames={half} layout="none">
+          <div style={{position: 'relative'}}>
+            <DeviceStage
+              src={ASSETS.screens.S12.reportDialog}
+              width={1480}
+              height={760}
+              tiltDeg={3}
+              crop={{objectPosition: '50% 40%', scale: 1.55}}
+              callout={{label: 'أمر صوتي', x: 640, y: 420, delay: Math.round(0.5 * fps)}}
+            />
+            {/* Waveform pulse on voice */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 180,
+                bottom: 180,
+                display: 'flex',
+                gap: 4,
+                alignItems: 'flex-end',
+                height: 40,
+              }}
+            >
+              {[0.4, 0.7, 1, 0.65, 0.9, 0.5].map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 5,
+                    height: 40 * h * wave,
+                    borderRadius: 3,
+                    background: brand.colors.accent,
+                  }}
+                />
+              ))}
+              <div
+                style={{
+                  marginRight: 10,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: brand.colors.accent,
+                  boxShadow: `0 0 0 ${6 * wave}px ${brand.colors.accent}33`,
+                }}
+              />
+              <span
+                dir="rtl"
+                style={{
+                  color: brand.colors.ivory,
+                  fontFamily: brand.fontFamily,
+                  fontSize: 16,
+                  marginRight: 8,
+                }}
+              >
+                ٠:٢٢ / ٢:٠٠
+              </span>
+            </div>
+            <div
+              dir="rtl"
+              lang="ar"
+              style={{
+                position: 'absolute',
+                bottom: 150,
+                left: 260,
+                minWidth: 520,
+                backgroundColor: 'rgba(247,243,235,0.96)',
+                color: brand.colors.ink,
+                borderRadius: 999,
+                padding: '12px 22px',
+                fontSize: 22,
+                fontWeight: 600,
+                fontFamily: brand.fontFamily,
+                boxShadow: textGlow > 0.5 ? `0 0 0 3px ${brand.colors.gold}` : undefined,
+              }}
+            >
+              {COMMAND}
+            </div>
+          </div>
+        </Sequence>
+        <Sequence from={half} durationInFrames={dur - half} layout="none">
+          <div style={{position: 'relative'}}>
+            <DeviceStage
+              src={ASSETS.screens.S12.home}
+              width={1480}
+              height={760}
+              tiltDeg={3}
+              crop={{objectPosition: '48% 35%', scale: 1.35}}
+              callout={{label: 'فاتورة مشتريات', x: 700, y: 280, delay: Math.round(0.35 * fps)}}
+            />
+            <div
+              dir="rtl"
+              lang="ar"
+              style={{
+                position: 'absolute',
+                right: 120,
+                top: 160,
+                transform: `scale(${Math.max(check, 0.01)})`,
+                opacity: check,
+                border: '3px solid #2e7d32',
+                color: '#2e7d32',
+                background: 'rgba(247,243,235,0.94)',
+                fontWeight: 700,
+                fontSize: 28,
+                padding: '8px 16px',
+                fontFamily: brand.fontFamily,
+              }}
+            >
+              ✓ تمّ التنفيذ
+            </div>
+          </div>
+        </Sequence>
       </AbsoluteFill>
     </SceneShell>
   );

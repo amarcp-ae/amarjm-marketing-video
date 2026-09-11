@@ -29,6 +29,7 @@ const CHIPS = [
   {id: 'uae', label: 'UAE eInvoicing'},
   {id: 'omn', label: 'Oman eInvoicing'},
 ];
+// Overlay chips show Arabic certified mark ✓ معتمد (see chip row below).
 
 const FlagGlyph: React.FC<(typeof FLAGS)[number]> = (f) => (
   <div
@@ -164,7 +165,7 @@ export const ComplianceBadges: React.FC = () => {
                 />
               </svg>
               <span dir="rtl" style={{color: '#1b5e20', fontSize: 22, opacity: check}}>
-                معتمد
+                ✓ معتمد
               </span>
             </div>
           );

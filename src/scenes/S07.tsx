@@ -11,10 +11,11 @@ import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
 const SCENE_ID: SceneId = 'S07';
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
+/** Scan → pay → RFID stocktake, Arabic callouts on امسح / أضف / اقبض / اطبع. */
 export const S07: React.FC = () => {
   ensureBrandFont();
   const {durationInFrames: dur, fps} = useVideoConfig();
-  const seg = Math.max(1, Math.floor(dur / 3));
+  const seg = Math.max(1, Math.floor(dur / 4));
 
   return (
     <SceneShell sceneId={SCENE_ID}>
@@ -36,29 +37,30 @@ export const S07: React.FC = () => {
             height={760}
             tiltDeg={3}
             crop={{objectPosition: '50% 45%', scale: 1.5}}
-            callout={{label: 'امسح', x: 740, y: 320, delay: Math.round(0.6 * fps)}}
+            callout={{label: 'امسح', x: 740, y: 320, delay: Math.round(0.45 * fps)}}
           />
         </Sequence>
         <Sequence from={seg} durationInFrames={seg} layout="none">
+          <DeviceStage
+            src={ASSETS.screens.S07.posScan}
+            width={1480}
+            height={760}
+            tiltDeg={3}
+            crop={{objectPosition: '50% 40%', scale: 1.45}}
+            callout={{label: 'أضف', x: 700, y: 360, delay: Math.round(0.3 * fps)}}
+          />
+        </Sequence>
+        <Sequence from={seg * 2} durationInFrames={seg} layout="none">
           <DeviceStage
             src={ASSETS.screens.S07.posPaymentDialog}
             width={1480}
             height={760}
             tiltDeg={3}
             crop={{objectPosition: '50% 55%', scale: 1.55}}
-            callout={{label: 'اقبض', x: 700, y: 480, delay: Math.round(0.4 * fps)}}
+            callout={{label: 'اقبض', x: 700, y: 480, delay: Math.round(0.3 * fps)}}
           />
         </Sequence>
-        <Sequence from={seg * 2} durationInFrames={Math.floor((dur - seg * 2) / 2)} layout="none">
-          <DeviceStage width={1480} height={760} tiltDeg={3} crop={{scale: 1}}>
-            <RfidHandheld phase={1} />
-          </DeviceStage>
-        </Sequence>
-        <Sequence
-          from={seg * 2 + Math.floor((dur - seg * 2) / 2)}
-          durationInFrames={dur - seg * 2 - Math.floor((dur - seg * 2) / 2)}
-          layout="none"
-        >
+        <Sequence from={seg * 3} durationInFrames={dur - seg * 3} layout="none">
           <DeviceStage width={1480} height={760} tiltDeg={3} crop={{scale: 1}}>
             <RfidHandheld phase={2} />
           </DeviceStage>

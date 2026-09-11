@@ -1,5 +1,11 @@
 import React from 'react';
-import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {
+  AbsoluteFill,
+  interpolate,
+  spring,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
 import {brand} from '../brand';
 import {DeviceStage} from '../components/DeviceStage';
 import {KineticHeadline} from '../components/KineticHeadline';
@@ -9,22 +15,27 @@ import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
 
 const SCENE_ID: SceneId = 'S10';
-
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
+/** Report dialog with Screenshot → collapses to ticket #1042 · مفتوحة. */
 export const S10: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const keyPress = spring({
-    frame: frame - Math.round(1.1 * fps),
-    fps,
-    config: {damping: 12, stiffness: 180},
+  const {fps, durationInFrames: dur} = useVideoConfig();
+  const collapseAt = Math.round(dur * 0.55);
+  const dialogOut = interpolate(frame, [collapseAt - 8, collapseAt + 8], [1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
   });
-  const fly = spring({
-    frame: frame - Math.round(2 * fps),
+  const ticketIn = spring({
+    frame: frame - collapseAt,
     fps,
-    config: {damping: 14, stiffness: 90},
+    config: {damping: 14, stiffness: 110},
+  });
+  const toast = spring({
+    frame: frame - (collapseAt + Math.round(0.35 * fps)),
+    fps,
+    config: {damping: 14, stiffness: 120},
   });
 
   return (
@@ -39,63 +50,62 @@ export const S10: React.FC = () => {
         ]}
       />
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingTop: 36}}>
-        <DeviceStage
-          src={ASSETS.screens.S10.supportDialog}
-          width={1480}
-          height={760}
-          tiltDeg={3}
-          crop={{objectPosition: '50% 35%', scale: 1.5}}
-          callout={{label: 'الدعم', x: 640, y: 280, delay: Math.round(0.9 * fps)}}
-        />
         <div
           style={{
-            position: 'absolute',
-            bottom: 110,
-            left: 140,
-            display: 'flex',
-            gap: 10,
+            opacity: dialogOut,
+            transform: `scale(${0.92 + dialogOut * 0.08})`,
           }}
         >
-          {['Alt', '0'].map((label, i) => (
-            <div
-              key={label}
-              style={{
-                minWidth: 60,
-                height: 60,
-                borderRadius: 8,
-                backgroundColor: '#1a1a20',
-                border: `1.5px solid ${brand.colors.gold}`,
-                color: brand.colors.ivory,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 20,
-                fontWeight: 700,
-                transform: `translateY(${i === 1 ? interpolate(keyPress, [0, 1], [0, 6]) : 0}px)`,
-              }}
-            >
-              {label}
-            </div>
-          ))}
+          <DeviceStage
+            src={ASSETS.screens.S10.reportDialog}
+            width={1480}
+            height={760}
+            tiltDeg={3}
+            crop={{objectPosition: '50% 40%', scale: 1.55}}
+            callout={{label: 'لقطة الشاشة', x: 520, y: 420, delay: Math.round(0.7 * fps)}}
+          />
         </div>
         <div
+          dir="rtl"
+          lang="ar"
           style={{
             position: 'absolute',
-            right: 100,
-            bottom: 130,
-            padding: '12px 18px',
+            right: 120,
+            bottom: 160,
+            padding: '16px 22px',
             backgroundColor: brand.colors.ivory,
             color: brand.colors.ink,
-            borderRadius: 10,
+            borderRadius: 12,
             fontFamily: brand.fontFamily,
             fontWeight: 700,
-            fontSize: 22,
-            transform: `translate(${interpolate(fly, [0, 1], [80, 0])}px, ${interpolate(fly, [0, 1], [-40, 0])}px) scale(${fly})`,
-            opacity: fly,
+            fontSize: 24,
+            transform: `translate(${interpolate(ticketIn, [0, 1], [80, 0])}px, ${interpolate(ticketIn, [0, 1], [-40, 0])}px) scale(${Math.max(ticketIn, 0.01)})`,
+            opacity: ticketIn,
             border: `2px solid ${brand.colors.gold}`,
+            boxShadow: '0 16px 36px rgba(0,0,0,0.35)',
           }}
         >
-          Support Ticket
+          #1042 · مفتوحة
+        </div>
+        <div
+          dir="rtl"
+          lang="ar"
+          style={{
+            position: 'absolute',
+            left: 100,
+            bottom: 140,
+            padding: '12px 18px',
+            background: 'rgba(14,14,18,0.92)',
+            color: brand.colors.ivory,
+            borderRadius: 10,
+            fontFamily: brand.fontFamily,
+            fontSize: 18,
+            opacity: toast,
+            transform: `translateY(${(1 - toast) * 20}px)`,
+            border: `1px solid ${brand.colors.gold}`,
+          }}
+        >
+          وصل بلاغ جديد من الفرع
         </div>
       </AbsoluteFill>
     </SceneShell>

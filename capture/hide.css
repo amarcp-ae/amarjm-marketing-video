@@ -1,7 +1,7 @@
 /**
  * Injected before every marketing shot.
- * Strips avatar/email chrome, Help, update banners, and toasts.
- * Elements whose text matches /@amarcp\.ae/ are also hidden via JS in capture.ts.
+ * Strips avatar/email chrome, Help, update banners, toasts,
+ * and demo company names (Hashem Round 2 / Round2).
  */
 
 /* Navbar user avatar / email / dropdown trigger */
@@ -57,12 +57,21 @@ div[id^='alert-container'],
   visibility: hidden !important;
 }
 
-/* Cookie / chat chrome (keep from scaffold) */
+/* Cookie / chat chrome */
 [data-testid='cookie-banner'],
 .cookie-consent,
 #chat-widget,
 .intercom-lightweight-app,
 [aria-label='Close announcement'] {
   display: none !important;
+  visibility: hidden !important;
+}
+
+/* Demo tenant chrome — hide Round2 / Hashem Round 2 labels */
+[title*='Round2' i],
+[title*='Round 2' i],
+[title*='Hashem Round' i],
+[data-company*='Round2' i],
+[data-company*='Hashem' i] {
   visibility: hidden !important;
 }

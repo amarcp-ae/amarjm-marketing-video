@@ -18,6 +18,12 @@ export const ASSETS = {
       itemMetal: 'screens/S05/item-metal.png',
       stockBalance: 'screens/S05/stock-balance.png',
     },
+    S06: {
+      homeDesktop: 'screens/S06/home-desktop.png',
+      homeIphone: 'screens/S06/home-iphone.png',
+      productDesktop: 'screens/S06/product-desktop.png',
+      walletDesktop: 'screens/S06/wallet-desktop.png',
+    },
     S07: {
       posPaymentDialog: 'screens/S07/pos-payment-dialog.png',
       posScan: 'screens/S07/pos-scan.png',
@@ -25,17 +31,23 @@ export const ASSETS = {
     S08: {
       posClosingEntry: 'screens/S08/pos-closing-entry.png',
       posOpeningEntry: 'screens/S08/pos-opening-entry.png',
+      posShiftClose: 'screens/S08/pos-shift-close.png',
     },
     S09: {
       customerKyc: 'screens/S09/customer-kyc.png',
+      planetRegister: 'screens/S09/planet-register.png',
+      planetSuccess: 'screens/S09/planet-success.png',
       taxFreeTransaction: 'screens/S09/tax-free-transaction.png',
+      taxInvoice: 'screens/S09/tax-invoice.png',
       vatReport: 'screens/S09/vat-report.png',
     },
     S10: {
+      reportDialog: 'screens/S10/report-dialog.png',
       supportDialog: 'screens/S10/support-dialog.png',
     },
     S12: {
       home: 'screens/S12/home.png',
+      reportDialog: 'screens/S12/report-dialog.png',
     },
   },
   video: {

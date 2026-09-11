@@ -135,16 +135,22 @@ const appendNote = async (scene: string, note: string, sourceUrl = ''): Promise<
 
 /* --------------------------- Page preparation ---------------------------- */
 
-const hideAmarcpEmailNodes = async (page: Page): Promise<void> => {
+const hideSensitiveDeskNodes = async (page: Page): Promise<void> => {
   await page.evaluate(() => {
-    const pattern = /@amarcp\.ae/i;
+    const patterns = [/@amarcp\.ae/i, /Hashem\s*Round\s*2/i, /Round\s*2/i, /\bRound2\b/i];
     const hide: Element[] = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
     let node = walker.nextNode();
     while (node) {
       const el = node as Element;
       const text = (el.textContent ?? '').trim();
-      if (text && pattern.test(text) && text.length < 200) {
+      if (
+        text &&
+        text.length < 220 &&
+        patterns.some((p) => p.test(text)) &&
+        // Prefer leaf-ish nodes so we don't hide the whole desk
+        el.childElementCount <= 3
+      ) {
         hide.push(el);
       }
       node = walker.nextNode();
@@ -208,7 +214,7 @@ const prepareForShot = async (
   const dismissOverlays = opts.dismissOverlays !== false;
   await dismissCompanyPicker(page);
   await page.addStyleTag({path: HIDE_CSS_PATH});
-  await hideAmarcpEmailNodes(page);
+  await hideSensitiveDeskNodes(page);
   try {
     await page.waitForLoadState('networkidle', {timeout: 30_000});
   } catch {
@@ -223,6 +229,21 @@ const prepareForShot = async (
     await page.waitForTimeout(400);
   } else {
     await page.waitForTimeout(400);
+  }
+  // Assert company picker / blocking modals are gone before a marketing shot.
+  await dismissCompanyPicker(page);
+  const blocking = page.locator('.modal.show');
+  if ((await blocking.count()) > 0) {
+    const visible = await blocking
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (visible) {
+      console.warn('prepareForShot: .modal.show still visible — dismissing again');
+      await page.keyboard.press('Escape').catch(() => undefined);
+      await dismissCompanyPicker(page);
+      await page.waitForTimeout(400);
+    }
   }
 };
 

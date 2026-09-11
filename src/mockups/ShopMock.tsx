@@ -197,7 +197,7 @@ const ProductsDesktop: React.FC<{sold?: boolean; soldOpacity?: number; stamp?: n
                         background: 'rgba(247,243,235,0.92)',
                       }}
                     >
-                      مباعة
+                      مُباعة
                     </span>
                   </div>
                 ) : null}
