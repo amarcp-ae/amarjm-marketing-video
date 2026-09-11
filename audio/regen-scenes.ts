@@ -216,7 +216,7 @@ async function main() {
   }
 
   manifest.voice = {
-    name: 'Abdullah - Saudi Arabic Narrator',
+    name: 'Cloned voice (l2PqipvTQvI6VY5pLWBt)',
     voice_id: VOICE_ID,
     model_id: MODEL_ID,
   };
