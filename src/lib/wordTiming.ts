@@ -10,15 +10,22 @@ export const findWordOnsetSec = (
 ): number | null => {
   const words = getSceneWords(sceneId);
   const target = clean(needle);
-  let hit = 0;
-  for (const w of words) {
-    const cw = clean(w.word);
-    if (cw === target || cw.includes(target) || target.includes(cw)) {
-      if (hit === occurrence) return w.startSec;
-      hit += 1;
+  if (!target) return null;
+
+  // Prefer exact (cleaned) matches first so short tokens like "ما" don't steal "أمارسوفت".
+  const exact: number[] = [];
+  const fuzzy: number[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const cw = clean(words[i].word);
+    if (!cw) continue;
+    if (cw === target) exact.push(i);
+    else if (cw.includes(target) || (target.length >= 3 && target.includes(cw) && cw.length >= 3)) {
+      fuzzy.push(i);
     }
   }
-  return null;
+  const pool = exact.length > 0 ? exact : fuzzy;
+  const idx = pool[occurrence];
+  return idx === undefined ? null : words[idx].startSec;
 };
 
 export const findWordOnsetFrame = (

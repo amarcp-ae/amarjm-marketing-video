@@ -13,7 +13,7 @@ export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 const ROLES = [
   {key: 'المدير', label: 'المدير الماليّ'},
   {key: 'المحاسب', label: 'المحاسب'},
-  {key: 'المالك', label: 'المالك'},
+  {key: 'والمالك', label: 'المالك'},
   {key: 'البائع', label: 'البائع'},
   {key: 'الموز', label: 'الموزّع'},
   {key: 'الورشة', label: 'الورشة'},
@@ -21,7 +21,7 @@ const ROLES = [
 
 const MODULES = [
   {key: 'الحسابات', label: 'حسابات'},
-  {key: 'المخزون', label: 'مخزون', occurrence: 2},
+  {key: 'والمخزون', label: 'مخزون'},
   {key: 'الموارد', label: 'HR'},
   {key: 'المبيعات', label: 'مبيعات'},
   {key: 'التسويق', label: 'تسويق'},
@@ -49,7 +49,6 @@ const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
       gap: 10,
       opacity: lit ? 1 : 0.28,
       transform: `scale(${lit ? 1 : 0.92})`,
-      transition: 'none',
     }}
   >
     <div
@@ -80,6 +79,16 @@ const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
   </div>
 );
 
+/** Safe phase opacity — never feeds a non-monotonic interpolate range. */
+const phaseOpacity = (frame: number, start: number, end: number, fade = 18): number => {
+  const hold = Math.max(10, end - start - fade);
+  const local = frame - start;
+  return interpolate(local, [0, 8, hold, hold + fade], [0, 1, 1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+};
+
 export const S01: React.FC = () => {
   ensureBrandFont();
   const frame = useCurrentFrame();
@@ -98,7 +107,16 @@ export const S01: React.FC = () => {
   const fFix = onset('التثبيت');
   const fModulesStart = onset('الحسابات');
   const fHarmony = onset('تناغم');
-  const fLogo = onset('أمارسوفت');
+  const fLogo = onset('أمارسوفت', 0);
+
+  // Prefer exact-ish logo word — avoid short "ما" false positive via sequential search from end
+  const fLogoSafe = (() => {
+    const a = findWordOnsetFrame(SCENE_ID, 'أمارسوفت', fps, 0);
+    const b = findWordOnsetFrame(SCENE_ID, 'أمارسوفت', fps, 1);
+    // If first hit is too early (< 30s), use second occurrence
+    if (a !== null && a < 30 * fps && b !== null) return b;
+    return a ?? Math.round(39.16 * fps);
+  })();
 
   const roleOnsets = ROLES.map((r) => onset(r.key));
   const moduleOnsets = MODULES.map((m) =>
@@ -111,24 +129,16 @@ export const S01: React.FC = () => {
     config: {damping: 14, stiffness: 120},
   });
 
-  const phase = (start: number, hold: number, fade = 18) => {
-    const local = frame - start;
-    return interpolate(local, [0, 8, hold, hold + fade], [0, 1, 1, 0], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
-    });
-  };
-
   const pop = (start: number) =>
     spring({frame: frame - start, fps, config: {damping: 12, stiffness: 160}});
 
-  const evalOp = phase(fEval, fReal - fEval - 4);
-  const profitOp = phase(fReal, fFake - fReal + 28);
-  const rolesOp = phase(roleOnsets[0]!, fShop - roleOnsets[0]! - 6);
-  const mapOp = phase(fShop, fErrors - fShop - 6);
-  const fixOp = phase(fErrors, fModulesStart - fErrors - 6);
-  const modsOp = phase(fModulesStart, fLogo - fModulesStart - 10);
-  const logoOp = interpolate(frame, [fLogo - 6, fLogo + 10], [0, 1], {
+  const evalOp = phaseOpacity(frame, fEval, fReal);
+  const profitOp = phaseOpacity(frame, fReal, roleOnsets[0]!);
+  const rolesOp = phaseOpacity(frame, roleOnsets[0]!, fShop);
+  const mapOp = phaseOpacity(frame, fShop, fErrors);
+  const fixOp = phaseOpacity(frame, fErrors, fModulesStart);
+  const modsOp = phaseOpacity(frame, fModulesStart, fLogoSafe);
+  const logoOp = interpolate(frame, [fLogoSafe - 6, fLogoSafe + 10], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
@@ -144,10 +154,13 @@ export const S01: React.FC = () => {
     extrapolateRight: 'clamp',
   });
 
-  const subtitleOp = interpolate(frame, [fCountry, fCountry + 10, fErrors - 8, fErrors], [0, 1, 1, 0], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+  const subtitleOp =
+    fCountry > 0
+      ? interpolate(frame, [fCountry, fCountry + 10, Math.max(fCountry + 20, fErrors - 8), fErrors], [0, 1, 1, 0], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        })
+      : 0;
 
   return (
     <SceneShell sceneId={SCENE_ID} isFirst showHairline={false}>
@@ -159,7 +172,6 @@ export const S01: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Atmosphere wash */}
         <AbsoluteFill
           style={{
             background: `radial-gradient(ellipse at 50% 40%, ${brand.colors.gold}18 0%, transparent 55%)`,
@@ -167,7 +179,6 @@ export const S01: React.FC = () => {
           }}
         />
 
-        {/* Years badge — early */}
         <div
           dir="rtl"
           lang="ar"
@@ -186,59 +197,32 @@ export const S01: React.FC = () => {
           ثلاثة عشر عامًا
         </div>
 
-        {/* تقييم المخزون */}
         {evalOp > 0.01 ? (
-          <div
-            dir="rtl"
-            style={{
-              ...cardStyle(evalOp, pop(fEval)),
-              position: 'absolute',
-              top: '28%',
-            }}
-          >
+          <div dir="rtl" style={{...cardStyle(evalOp, pop(fEval)), position: 'absolute', top: '28%'}}>
             <div style={{fontSize: 56, fontWeight: 700, color: brand.colors.gold}}>تقييم المخزون</div>
           </div>
         ) : null}
 
-        {/* ربح حقيقيّ / وهميّ */}
         {profitOp > 0.01 ? (
           <div
             dir="rtl"
-            style={{
-              position: 'absolute',
-              top: '30%',
-              display: 'flex',
-              gap: 28,
-              opacity: profitOp,
-            }}
+            style={{position: 'absolute', top: '30%', display: 'flex', gap: 28, opacity: profitOp}}
           >
             <div style={{...cardStyle(1, pop(fReal)), padding: '22px 36px'}}>
               <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
               <div style={{fontSize: 48, fontWeight: 700, color: '#5FBF6A'}}>حقيقيّ</div>
             </div>
-            <div
-              style={{
-                ...cardStyle(frame >= fFake ? 1 : 0.35, pop(fFake)),
-                padding: '22px 36px',
-              }}
-            >
+            <div style={{...cardStyle(frame >= fFake ? 1 : 0.35, pop(fFake)), padding: '22px 36px'}}>
               <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
               <div style={{fontSize: 48, fontWeight: 700, color: brand.colors.accent}}>وهميّ</div>
             </div>
           </div>
         ) : null}
 
-        {/* Roles row */}
         {rolesOp > 0.01 ? (
           <div
             dir="rtl"
-            style={{
-              position: 'absolute',
-              top: '34%',
-              display: 'flex',
-              gap: 36,
-              opacity: rolesOp,
-            }}
+            style={{position: 'absolute', top: '34%', display: 'flex', gap: 36, opacity: rolesOp}}
           >
             {ROLES.map((r, i) => (
               <RoleIcon key={r.key} lit={frame >= roleOnsets[i]!} label={r.label} />
@@ -246,7 +230,6 @@ export const S01: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Growing map: محلّ → فروع → دولة */}
         {mapOp > 0.01 ? (
           <div
             style={{
@@ -260,7 +243,6 @@ export const S01: React.FC = () => {
             }}
           >
             <svg width={720} height={320} viewBox="0 0 720 320">
-              {/* single shop */}
               <circle
                 cx={160}
                 cy={160}
@@ -268,7 +250,6 @@ export const S01: React.FC = () => {
                 fill={brand.colors.gold}
                 opacity={mapStep >= 0 ? 1 : 0.2}
               />
-              {/* branches */}
               {[0, 1, 2, 3].map((i) => {
                 const a = (-40 + i * 28) * (Math.PI / 180);
                 const x = 360 + Math.cos(a) * 90;
@@ -282,13 +263,11 @@ export const S01: React.FC = () => {
                       y2={y}
                       stroke={brand.colors.gold}
                       strokeWidth={2}
-                      strokeDasharray={mapStep >= 1 ? '0' : '4 6'}
                     />
                     <circle cx={x} cy={y} r={16} fill={`${brand.colors.gold}cc`} />
                   </g>
                 );
               })}
-              {/* countries */}
               {[
                 {x: 560, y: 80, label: 'UAE'},
                 {x: 620, y: 160, label: 'KSA'},
@@ -303,7 +282,14 @@ export const S01: React.FC = () => {
                     stroke={brand.colors.gold}
                     strokeWidth={2}
                   />
-                  <circle cx={n.x} cy={n.y} r={22} fill={brand.colors.ink} stroke={brand.colors.gold} strokeWidth={2} />
+                  <circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={22}
+                    fill={brand.colors.ink}
+                    stroke={brand.colors.gold}
+                    strokeWidth={2}
+                  />
                   <text
                     x={n.x}
                     y={n.y + 5}
@@ -328,15 +314,30 @@ export const S01: React.FC = () => {
                 color: brand.colors.ivory,
               }}
             >
-              <span style={{opacity: mapStep >= 0 ? 1 : 0.35, color: mapStep === 0 ? brand.colors.gold : brand.colors.ivory}}>
+              <span
+                style={{
+                  opacity: mapStep >= 0 ? 1 : 0.35,
+                  color: mapStep === 0 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
                 محلّ واحد
               </span>
               <span style={{opacity: 0.5}}>→</span>
-              <span style={{opacity: mapStep >= 1 ? 1 : 0.35, color: mapStep === 1 ? brand.colors.gold : brand.colors.ivory}}>
+              <span
+                style={{
+                  opacity: mapStep >= 1 ? 1 : 0.35,
+                  color: mapStep === 1 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
                 فروع
               </span>
               <span style={{opacity: 0.5}}>→</span>
-              <span style={{opacity: mapStep >= 2 ? 1 : 0.35, color: mapStep === 2 ? brand.colors.gold : brand.colors.ivory}}>
+              <span
+                style={{
+                  opacity: mapStep >= 2 ? 1 : 0.35,
+                  color: mapStep === 2 ? brand.colors.gold : brand.colors.ivory,
+                }}
+              >
                 أكثر من دولة
               </span>
             </div>
@@ -347,7 +348,6 @@ export const S01: React.FC = () => {
                 fontSize: 28,
                 fontWeight: 600,
                 color: brand.colors.gold,
-                letterSpacing: '0.02em',
               }}
             >
               عدّة دول، تقريرٌ واحد
@@ -355,7 +355,6 @@ export const S01: React.FC = () => {
           </div>
         ) : null}
 
-        {/* أخطاء التثبيت — red → green */}
         {fixOp > 0.01 ? (
           <div
             dir="rtl"
@@ -399,23 +398,9 @@ export const S01: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Six module chips → ring */}
         {modsOp > 0.01 ? (
-          <div
-            style={{
-              position: 'absolute',
-              top: '24%',
-              width: 720,
-              height: 480,
-              opacity: modsOp,
-            }}
-          >
-            <svg
-              width={720}
-              height={480}
-              viewBox="0 0 720 480"
-              style={{position: 'absolute', inset: 0}}
-            >
+          <div style={{position: 'absolute', top: '24%', width: 720, height: 480, opacity: modsOp}}>
+            <svg width={720} height={480} viewBox="0 0 720 480" style={{position: 'absolute', inset: 0}}>
               <circle
                 cx={360}
                 cy={240}
@@ -482,7 +467,6 @@ export const S01: React.FC = () => {
           </div>
         ) : null}
 
-        {/* Logo reveal */}
         <div
           style={{
             position: 'absolute',
@@ -491,7 +475,7 @@ export const S01: React.FC = () => {
             transform: `scale(${interpolate(logoOp, [0, 1], [0.86, 1])})`,
           }}
         >
-          <LogoWordmark size={128} markWidth={320} sweepAt={fLogo + 4} />
+          <LogoWordmark size={128} markWidth={320} sweepAt={fLogoSafe + 4} />
         </div>
       </AbsoluteFill>
     </SceneShell>
