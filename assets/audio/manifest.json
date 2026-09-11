@@ -8,78 +8,83 @@
     "stability": 0.45,
     "similarity_boost": 0.8,
     "style": 0.2,
-    "speed": 0.95
+    "speed": 1.08,
+    "postTempo": 1.3886,
+    "loudnorm": {
+      "I": -16,
+      "TP": -1.5
+    }
   },
   "scenes": {
     "S01": {
       "file": "vo/S01.mp3",
-      "durationSec": 23.684,
+      "durationSec": 16.457,
       "timestampsFile": "vo/S01.timestamps.json"
     },
     "S02": {
       "file": "vo/S02.mp3",
-      "durationSec": 11.935,
+      "durationSec": 7.027,
       "timestampsFile": "vo/S02.timestamps.json"
     },
     "S03": {
       "file": "vo/S03.mp3",
-      "durationSec": 10.449,
+      "durationSec": 6.113,
       "timestampsFile": "vo/S03.timestamps.json"
     },
     "S04": {
       "file": "vo/S04.mp3",
-      "durationSec": 11.471,
+      "durationSec": 7.314,
       "timestampsFile": "vo/S04.timestamps.json"
     },
     "S05": {
       "file": "vo/S05.mp3",
-      "durationSec": 8.684,
+      "durationSec": 6.322,
       "timestampsFile": "vo/S05.timestamps.json"
     },
     "S06": {
       "file": "vo/S06.mp3",
-      "durationSec": 16.672,
+      "durationSec": 10.789,
       "timestampsFile": "vo/S06.timestamps.json"
     },
     "S07": {
       "file": "vo/S07.mp3",
-      "durationSec": 13.514,
+      "durationSec": 9.404,
       "timestampsFile": "vo/S07.timestamps.json"
     },
     "S08": {
       "file": "vo/S08.mp3",
-      "durationSec": 12.539,
+      "durationSec": 8.202,
       "timestampsFile": "vo/S08.timestamps.json"
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 12.26,
+      "durationSec": 7.053,
       "timestampsFile": "vo/S09.timestamps.json"
     },
     "S10": {
       "file": "vo/S10.mp3",
-      "durationSec": 9.427,
+      "durationSec": 5.721,
       "timestampsFile": "vo/S10.timestamps.json"
     },
     "S11": {
       "file": "vo/S11.mp3",
-      "durationSec": 11.331,
+      "durationSec": 5.982,
       "timestampsFile": "vo/S11.timestamps.json"
     },
     "S12": {
       "file": "vo/S12.mp3",
-      "durationSec": 14.071,
+      "durationSec": 7.654,
       "timestampsFile": "vo/S12.timestamps.json"
     },
     "S13": {
       "file": "vo/S13.mp3",
-      "durationSec": 8.173,
+      "durationSec": 6.896,
       "timestampsFile": "vo/S13.timestamps.json"
     }
   },
   "music": {
-    "file": "music/bed.mp3",
-    "durationSec": 100
+    "file": "music/bed-v2.mp3",
+    "durationSec": 110
   },
   "sfx": [
     {
