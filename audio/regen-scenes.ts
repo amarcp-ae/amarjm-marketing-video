@@ -20,13 +20,13 @@ const SCENE_TAIL_SEC: Record<string, number> = {
   S13: 3.0, // end card
 };
 
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'usjDi9nBY6UHvtKrL4ba';
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'l2PqipvTQvI6VY5pLWBt';
 const MODEL_ID = 'eleven_multilingual_v2';
 const VOICE_SETTINGS = {
-  stability: 0.3,
-  similarity_boost: 0.85,
-  style: 0.55,
-  speed: 1.1,
+  stability: 0.45,
+  similarity_boost: 0.9,
+  style: 0.25,
+  speed: 1.08,
 } as const;
 
 const sceneTailSec = (id: string) => SCENE_TAIL_SEC[id] ?? DEFAULT_TAIL_SEC;

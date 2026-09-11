@@ -1,14 +1,14 @@
 {
   "voice": {
     "name": "Abdullah - Saudi Arabic Narrator",
-    "voice_id": "usjDi9nBY6UHvtKrL4ba",
+    "voice_id": "l2PqipvTQvI6VY5pLWBt",
     "model_id": "eleven_multilingual_v2"
   },
   "voiceSettings": {
-    "stability": 0.3,
-    "similarity_boost": 0.85,
-    "style": 0.55,
-    "speed": 1.1,
+    "stability": 0.45,
+    "similarity_boost": 0.9,
+    "style": 0.25,
+    "speed": 1.08,
     "loudnorm": {
       "I": -16,
       "TP": -1.5
@@ -17,104 +17,104 @@
   "scenes": {
     "S01": {
       "file": "vo/S01.mp3",
-      "durationSec": 42.925,
-      "lastSpeechSec": 41.425,
+      "durationSec": 33.775,
+      "lastSpeechSec": 32.275,
       "holdSec": 1.5,
       "timestampsFile": "vo/S01.timestamps.json",
       "wordCount": 69
     },
     "S02": {
       "file": "vo/S02.mp3",
-      "durationSec": 15.161,
-      "lastSpeechSec": 14.861,
+      "durationSec": 9.867,
+      "lastSpeechSec": 9.567,
       "holdSec": 0.3,
       "timestampsFile": "vo/S02.timestamps.json",
       "wordCount": 20
     },
     "S03": {
       "file": "vo/S03.mp3",
-      "durationSec": 9.588,
-      "lastSpeechSec": 9.288,
+      "durationSec": 5.455,
+      "lastSpeechSec": 5.155,
       "holdSec": 0.3,
       "timestampsFile": "vo/S03.timestamps.json",
       "wordCount": 11
     },
     "S04": {
       "file": "vo/S04.mp3",
-      "durationSec": 8.752,
-      "lastSpeechSec": 8.452,
+      "durationSec": 5.826,
+      "lastSpeechSec": 5.526,
       "holdSec": 0.3,
       "timestampsFile": "vo/S04.timestamps.json",
       "wordCount": 15
     },
     "S05": {
       "file": "vo/S05.mp3",
-      "durationSec": 7.359,
-      "lastSpeechSec": 7.059,
+      "durationSec": 5.362,
+      "lastSpeechSec": 5.062,
       "holdSec": 0.3,
       "timestampsFile": "vo/S05.timestamps.json",
       "wordCount": 11
     },
     "S06": {
       "file": "vo/S06.mp3",
-      "durationSec": 22.266,
-      "lastSpeechSec": 21.966,
+      "durationSec": 17.297,
+      "lastSpeechSec": 16.997,
       "holdSec": 0.3,
       "timestampsFile": "vo/S06.timestamps.json",
       "wordCount": 27
     },
     "S07": {
       "file": "vo/S07.mp3",
-      "durationSec": 13.535,
-      "lastSpeechSec": 13.235,
+      "durationSec": 6.755,
+      "lastSpeechSec": 6.455,
       "holdSec": 0.3,
       "timestampsFile": "vo/S07.timestamps.json",
       "wordCount": 15
     },
     "S08": {
       "file": "vo/S08.mp3",
-      "durationSec": 12.607,
-      "lastSpeechSec": 12.307,
+      "durationSec": 6.941,
+      "lastSpeechSec": 6.641,
       "holdSec": 0.3,
       "timestampsFile": "vo/S08.timestamps.json",
       "wordCount": 15
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 18.086,
-      "lastSpeechSec": 17.786,
+      "durationSec": 14.65,
+      "lastSpeechSec": 14.35,
       "holdSec": 0.3,
       "timestampsFile": "vo/S09.timestamps.json",
       "wordCount": 25
     },
     "S10": {
       "file": "vo/S10.mp3",
-      "durationSec": 9.031,
-      "lastSpeechSec": 8.731,
+      "durationSec": 5.223,
+      "lastSpeechSec": 4.923,
       "holdSec": 0.3,
       "timestampsFile": "vo/S10.timestamps.json",
       "wordCount": 14
     },
     "S11": {
       "file": "vo/S11.mp3",
-      "durationSec": 15.532,
-      "lastSpeechSec": 15.232,
+      "durationSec": 9.124,
+      "lastSpeechSec": 8.824,
       "holdSec": 0.3,
       "timestampsFile": "vo/S11.timestamps.json",
       "wordCount": 17
     },
     "S12": {
       "file": "vo/S12.mp3",
-      "durationSec": 7.545,
-      "lastSpeechSec": 7.245,
+      "durationSec": 4.665,
+      "lastSpeechSec": 4.365,
       "holdSec": 0.3,
       "timestampsFile": "vo/S12.timestamps.json",
       "wordCount": 11
     },
     "S13": {
       "file": "vo/S13.mp3",
-      "durationSec": 11.127,
-      "lastSpeechSec": 8.127,
+      "durationSec": 7.923,
+      "lastSpeechSec": 4.923,
       "holdSec": 3,
       "timestampsFile": "vo/S13.timestamps.json",
       "wordCount": 12
