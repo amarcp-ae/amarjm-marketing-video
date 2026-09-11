@@ -57,7 +57,7 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
   height = 780,
   tiltDeg = 3,
   crop = {objectPosition: '50% 40%', scale: 1.5},
-  enterDelay = 8,
+  enterDelay = 0,
   callout,
   children,
 }) => {
@@ -69,11 +69,14 @@ export const DeviceStage: React.FC<DeviceStageProps> = ({
   const w = phone ? phone.width : width;
   const h = phone ? phone.height : height;
 
-  const enter = interpolate(frame, [enterDelay, enterDelay + 14], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-  const x = interpolate(enter, [0, 1], [-80, 0]);
+  const enter =
+    enterDelay <= 0
+      ? 1
+      : interpolate(frame, [enterDelay, enterDelay + 14], [0, 1], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        });
+  const x = enterDelay <= 0 ? 0 : interpolate(enter, [0, 1], [-80, 0]);
   const opacity = enter;
   const push = interpolate(frame, [0, Math.max(1, durationInFrames - 1)], [1, 1.04], {
     extrapolateLeft: 'clamp',

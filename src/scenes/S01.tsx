@@ -43,7 +43,8 @@ const cardStyle = (opacity: number, scale: number): React.CSSProperties => ({
   background: 'rgba(14,14,18,0.72)',
   border: `1.5px solid ${brand.colors.gold}88`,
   borderRadius: 18,
-  padding: '28px 48px',
+  padding: '36px 64px',
+  minWidth: '40vw',
   color: brand.colors.ivory,
   textAlign: 'center',
   boxShadow: `0 18px 48px rgba(0,0,0,0.45)`,
@@ -62,8 +63,8 @@ const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
   >
     <div
       style={{
-        width: 72,
-        height: 72,
+        width: 120,
+        height: 120,
         borderRadius: '50%',
         border: `2px solid ${lit ? brand.colors.gold : '#555'}`,
         background: lit ? `${brand.colors.gold}33` : 'rgba(255,255,255,0.04)',
@@ -75,14 +76,14 @@ const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
     >
       <div
         style={{
-          width: 28,
-          height: 28,
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           background: lit ? brand.colors.gold : '#666',
         }}
       />
     </div>
-    <div dir="rtl" style={{fontSize: 22, fontWeight: 600, color: brand.colors.ivory, whiteSpace: 'nowrap'}}>
+    <div dir="rtl" style={{fontSize: 32, fontWeight: 700, color: brand.colors.ivory, whiteSpace: 'nowrap'}}>
       {label}
     </div>
   </div>
@@ -90,6 +91,7 @@ const RoleIcon: React.FC<{lit: boolean; label: string}> = ({lit, label}) => (
 
 /** Safe phase opacity — never feeds a non-monotonic interpolate range. */
 const phaseOpacity = (frame: number, start: number, end: number, fade = 18): number => {
+  if (start <= 0 || end <= start) return 0;
   const hold = Math.max(10, end - start - fade);
   const local = frame - start;
   return interpolate(local, [0, 8, hold, hold + fade], [0, 1, 1, 0], {
@@ -114,8 +116,9 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
   const fShop = onset('المحل');
   const fBranches = onset('الفروع');
   const fCountry = onset('دولة');
-  const fErrors = onset('أخطاء');
-  const fFix = onset('التثبيت');
+  // Shortened VO may omit the errors/fix beat — fall back to modules onset.
+  const fErrors = onset('أخطاء') || onset('الحسابات');
+  const fFix = onset('التثبيت') || fErrors;
   const fModulesStart = onset('الحسابات');
   const fHarmony = onset('تناغم');
   const fLogo = onset('أمارسوفت', 0);
@@ -126,7 +129,7 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
     const b = findWordOnsetFrame(SCENE_ID, 'أمارسوفت', fps, 1);
     // If first hit is too early (< 30s), use second occurrence
     if (a !== null && a < 30 * fps && b !== null) return b;
-    return a ?? Math.round(39.16 * fps);
+    return a ?? Math.round(durationInFrames * 0.92);
   })();
 
   const roleOnsets = ROLES.map((r) => onset(r.key));
@@ -145,34 +148,51 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
   const pop = (start: number) =>
     spring({frame: frame - start, fps, config: {damping: 12, stiffness: 160}});
 
-  const evalOp = phaseOpacity(frame, fEval, fReal);
-  const profitOp = phaseOpacity(frame, fReal, roleOnsets[0]!);
-  const rolesOp = phaseOpacity(frame, roleOnsets[0]!, fShop);
-  const mapOp = phaseOpacity(frame, fShop, fErrors);
-  const fixOp = phaseOpacity(frame, fErrors, fModulesStart);
-  const modsOp = phaseOpacity(frame, fModulesStart, fLogoSafe);
-  const logoOp = interpolate(frame, [fLogoSafe - 6, fLogoSafe + 10], [0, 1], {
+  // New VO order: eval → profit → roles → map(shop/country) → modules → logo.
+  // Map ends at modules (errors/fix beat may be absent).
+  const mapEnd = fModulesStart > fShop ? fModulesStart : fLogoSafe;
+  const hasFixBeat = onset('أخطاء') > 0 && onset('التثبيت') > 0;
+
+  const evalOp = phaseOpacity(frame, fEval, fReal || roleOnsets[0]!);
+  const profitOp = phaseOpacity(frame, fReal, roleOnsets[0]! || fShop);
+  const rolesOp = phaseOpacity(frame, roleOnsets[0]!, fShop || mapEnd);
+  const mapOp = phaseOpacity(frame, fShop, mapEnd);
+  const fixOp = hasFixBeat ? phaseOpacity(frame, fErrors, fModulesStart) : 0;
+  const modsOp = phaseOpacity(frame, fModulesStart || fHarmony, fLogoSafe);
+  const logoOp = interpolate(frame, [Math.max(0, fLogoSafe - 6), fLogoSafe + 10], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
 
   const mapStep =
-    frame >= fCountry ? 2 : frame >= fBranches ? 1 : frame >= fShop ? 0 : -1;
-  const fixProgress = interpolate(frame, [fFix, fFix + 36], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-  const ringProgress = interpolate(frame, [fHarmony, fHarmony + 28], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
+    frame >= fCountry && fCountry > 0
+      ? 2
+      : frame >= fBranches && fBranches > 0
+        ? 1
+        : frame >= fShop && fShop > 0
+          ? 0
+          : -1;
+  const fixProgress = hasFixBeat
+    ? interpolate(frame, [fFix, fFix + 36], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 0;
+  const ringProgress = interpolate(
+    frame,
+    [fHarmony || fModulesStart, (fHarmony || fModulesStart) + 28],
+    [0, 1],
+    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+  );
 
   const subtitleOp =
-    fCountry > 0
-      ? interpolate(frame, [fCountry, fCountry + 10, Math.max(fCountry + 20, fErrors - 8), fErrors], [0, 1, 1, 0], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-        })
+    fCountry > 0 && mapEnd > fCountry + 20
+      ? interpolate(
+          frame,
+          [fCountry, fCountry + 10, Math.min(mapEnd - 8, fCountry + 40), mapEnd],
+          [0, 1, 1, 0],
+          {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+        )
       : 0;
 
   return (
@@ -197,11 +217,16 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
           lang="ar"
           style={{
             position: 'absolute',
-            top: '10%',
+            top: 0,
+            height: '20%',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transform: `scale(${years})`,
             opacity: years * (1 - logoOp * 0.85),
             color: brand.colors.ivory,
-            fontSize: 36,
+            fontSize: 96,
             fontWeight: 700,
             borderBottom: `2px solid ${brand.colors.gold}`,
             paddingBottom: 8,
@@ -212,7 +237,7 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
 
         {evalOp > 0.01 ? (
           <div dir="rtl" style={{...cardStyle(evalOp, pop(fEval)), position: 'absolute', top: '28%'}}>
-            <div style={{fontSize: 56, fontWeight: 700, color: brand.colors.gold}}>تقييم المخزون</div>
+            <div style={{fontSize: 84, fontWeight: 700, color: brand.colors.gold}}>تقييم المخزون</div>
           </div>
         ) : null}
 
@@ -221,13 +246,13 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
             dir="rtl"
             style={{position: 'absolute', top: '30%', display: 'flex', gap: 28, opacity: profitOp}}
           >
-            <div style={{...cardStyle(1, pop(fReal)), padding: '22px 36px'}}>
+            <div style={{...cardStyle(1, pop(fReal)), padding: '32px 56px', minWidth: '22vw'}}>
               <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
-              <div style={{fontSize: 48, fontWeight: 700, color: '#5FBF6A'}}>حقيقيّ</div>
+              <div style={{fontSize: 72, fontWeight: 700, color: '#5FBF6A'}}>حقيقيّ</div>
             </div>
-            <div style={{...cardStyle(frame >= fFake ? 1 : 0.35, pop(fFake)), padding: '22px 36px'}}>
+            <div style={{...cardStyle(frame >= fFake ? 1 : 0.35, pop(fFake)), padding: '32px 56px', minWidth: '22vw'}}>
               <div style={{fontSize: 22, opacity: 0.7, marginBottom: 6}}>ربح</div>
-              <div style={{fontSize: 48, fontWeight: 700, color: brand.colors.accent}}>وهميّ</div>
+              <div style={{fontSize: 72, fontWeight: 700, color: brand.colors.accent}}>وهميّ</div>
             </div>
           </div>
         ) : null}
@@ -258,12 +283,12 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
                     <div
                       key={c.key}
                       style={{
-                        padding: '8px 16px',
+                        padding: '14px 28px',
                         borderRadius: 999,
                         border: `1.5px solid ${lit ? brand.colors.gold : '#555'}`,
                         background: lit ? `${brand.colors.gold}28` : 'rgba(255,255,255,0.04)',
                         color: lit ? brand.colors.gold : '#777',
-                        fontSize: 20,
+                        fontSize: 28,
                         fontWeight: 700,
                         opacity: lit ? 1 : 0.35,
                         boxShadow: lit ? `0 0 16px ${brand.colors.gold}55` : 'none',
@@ -316,7 +341,7 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
               gap: 28,
             }}
           >
-            <svg width={720} height={320} viewBox="0 0 720 320">
+            <svg width={1100} height={420} viewBox="0 0 720 320">
               <circle
                 cx={160}
                 cy={160}
@@ -442,11 +467,11 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
               gap: 22,
             }}
           >
-            <div style={{fontSize: 48, fontWeight: 700, color: brand.colors.ivory}}>أخطاء التثبيت</div>
+            <div style={{fontSize: 72, fontWeight: 700, color: brand.colors.ivory}}>أخطاء التثبيت</div>
             <div
               style={{
-                width: 420,
-                height: 18,
+                width: 640,
+                height: 28,
                 borderRadius: 999,
                 background: 'rgba(255,255,255,0.12)',
                 overflow: 'hidden',
@@ -473,28 +498,28 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
         ) : null}
 
         {modsOp > 0.01 ? (
-          <div style={{position: 'absolute', top: '24%', width: 720, height: 480, opacity: modsOp}}>
-            <svg width={720} height={480} viewBox="0 0 720 480" style={{position: 'absolute', inset: 0}}>
+          <div style={{position: 'absolute', top: '18%', width: 1152, height: 700, opacity: modsOp}}>
+            <svg width={1152} height={700} viewBox="0 0 1152 700" style={{position: 'absolute', inset: 0}}>
               <circle
-                cx={360}
-                cy={240}
-                r={150}
+                cx={576}
+                cy={350}
+                r={280}
                 fill="none"
                 stroke={brand.colors.gold}
                 strokeWidth={3}
-                strokeDasharray={`${ringProgress * 943} 943`}
+                strokeDasharray={`${ringProgress * 1760} 1760`}
                 opacity={0.85}
               />
             </svg>
             {MODULES.map((m, i) => {
               const lit = frame >= moduleOnsets[i]!;
               const angle = (-90 + i * 60) * (Math.PI / 180);
-              const radius = interpolate(frame, [fHarmony, fHarmony + 24], [210, 150], {
+              const radius = interpolate(frame, [fHarmony, fHarmony + 24], [340, 280], {
                 extrapolateLeft: 'clamp',
                 extrapolateRight: 'clamp',
               });
-              const x = 360 + Math.cos(angle) * radius;
-              const y = 240 + Math.sin(angle) * radius;
+              const x = 576 + Math.cos(angle) * radius;
+              const y = 350 + Math.sin(angle) * radius;
               const s = lit ? pop(moduleOnsets[i]!) : 0.6;
               return (
                 <div
@@ -502,10 +527,10 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
                   dir="rtl"
                   style={{
                     position: 'absolute',
-                    left: x - 70,
-                    top: y - 28,
-                    width: 140,
-                    height: 56,
+                    left: x - 110,
+                    top: y - 40,
+                    width: 220,
+                    height: 80,
                     borderRadius: 14,
                     display: 'flex',
                     alignItems: 'center',
@@ -513,7 +538,7 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
                     background: lit ? `${brand.colors.gold}22` : 'rgba(255,255,255,0.05)',
                     border: `1.5px solid ${lit ? brand.colors.gold : '#555'}`,
                     color: lit ? brand.colors.gold : '#888',
-                    fontSize: 26,
+                    fontSize: 36,
                     fontWeight: 700,
                     opacity: lit ? 1 : 0.35,
                     transform: `scale(${s})`,
@@ -530,7 +555,7 @@ export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}
                 left: '50%',
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
-                fontSize: 28,
+                fontSize: 42,
                 fontWeight: 700,
                 color: brand.colors.ivory,
                 opacity: ringProgress,

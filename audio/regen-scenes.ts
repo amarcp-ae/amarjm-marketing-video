@@ -17,10 +17,10 @@ const MANIFEST_PATH = path.join(ROOT, 'assets', 'audio', 'manifest.json');
 const FRAMES_PATH = path.join(ROOT, 'src', 'sceneFrames.json');
 const FPS = 30;
 
-const DEFAULT_TAIL_SEC = 0.3;
+const DEFAULT_TAIL_SEC = 0.2;
 const SCENE_TAIL_SEC: Record<string, number> = {
-  S01: 1.5,
-  S13: 3.0,
+  S01: 1.0,
+  S13: 2.5,
 };
 
 /** Abdullah — Saudi Arabic Narrator */

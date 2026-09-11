@@ -1,27 +1,5 @@
 [
   {
-    "scene": "S02",
-    "file": "screens/S02/metal-rate.png",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/metal-rate/Al%20Noor%20Jewellery%20-%20Dubai",
-    "capturedAt": "2026-09-10T10:13:31.457Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "png"
-  },
-  {
-    "scene": "S02",
-    "file": "video/S02-metal-rate.webm",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/metal-rate/Al%20Noor%20Jewellery%20-%20Dubai",
-    "capturedAt": "2026-09-10T10:13:45.446Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "webm"
-  },
-  {
     "scene": "S03",
     "file": "screens/S03/sales-invoice-new.png",
     "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/sales-invoice/new",
@@ -132,17 +110,6 @@
     "kind": "png"
   },
   {
-    "scene": "S12",
-    "file": "screens/S12/home.png",
-    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/home",
-    "capturedAt": "2026-09-10T10:48:06.004Z",
-    "viewport": {
-      "width": 1920,
-      "height": 1080
-    },
-    "kind": "png"
-  },
-  {
     "scene": "S05",
     "file": "screens/S05/item-metal.png",
     "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
@@ -165,14 +132,91 @@
     "kind": "png"
   },
   {
+    "scene": "S12",
+    "file": "screens/S12/home.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/home",
+    "capturedAt": "2026-09-11T11:54:27.189Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S12",
+    "file": "screens/S12/purchase-invoice.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-11T11:54:36.566Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
     "scene": "S07",
-    "file": "FAILED: browserContext.close: Protocol error (Target.disposeBrowserContext): Failed to find context with id 85125A57BB30C87BE118D3F7AB5C6468",
+    "file": "screens/S07/pos-scan.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/pos-jewellery",
+    "capturedAt": "2026-09-11T11:57:09.001Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "screens/S07/pos-payment-dialog.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/pos-jewellery",
+    "capturedAt": "2026-09-11T11:57:11.814Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S07",
+    "file": "video/S07-pos-scan.webm",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/pos-jewellery",
+    "capturedAt": "2026-09-11T11:57:12.503Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "webm"
+  },
+  {
+    "scene": "S02",
+    "file": "Metal Rate form not visible — retrying navigation",
     "sourceUrl": "",
-    "capturedAt": "2026-09-10T12:16:10.804Z",
+    "capturedAt": "2026-09-11T11:58:16.173Z",
     "viewport": {
       "width": 1920,
       "height": 1080
     },
     "kind": "note"
+  },
+  {
+    "scene": "S02",
+    "file": "screens/S02/metal-rate.png",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/metal-rate/Al%20Noor%20Jewellery%20-%20Dubai",
+    "capturedAt": "2026-09-11T11:58:21.405Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "png"
+  },
+  {
+    "scene": "S02",
+    "file": "video/S02-metal-rate.webm",
+    "sourceUrl": "https://jewellery-cloud.amarcp.ae/app/Workspaces/AMARJM%20Home",
+    "capturedAt": "2026-09-11T11:58:33.753Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "kind": "webm"
   }
 ]

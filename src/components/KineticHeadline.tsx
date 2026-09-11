@@ -62,39 +62,48 @@ export const KineticHeadline: React.FC<KineticHeadlineProps> = ({
           boxSizing: 'border-box',
           pointerEvents: 'none',
           background:
-            'linear-gradient(180deg, rgba(14,14,18,0.75) 0%, rgba(14,14,18,0.35) 70%, transparent 100%)',
+            'linear-gradient(180deg, rgba(14,14,18,0.88) 0%, rgba(14,14,18,0.45) 70%, transparent 100%)',
         }}
       >
         <div
           style={{
             textAlign: 'center',
             fontFamily: brand.fontFamily,
-            fontSize: 52,
+            fontSize: 96,
             fontWeight: 700,
-            lineHeight: 1.25,
+            lineHeight: 1.15,
             color: brand.colors.ivory,
             textShadow: '0 6px 24px rgba(0,0,0,0.55)',
-            maxWidth: '92%',
+            maxWidth: '96%',
           }}
         >
           {tokens.map((token, i) => {
-            const voStart = onsets[i] ?? Math.round(i * 5);
-            const appear = interpolate(frame, [voStart, voStart + 4], [0, 1], {
+            // Fade in on VO onset of first token (or this token), then HOLD for whole scene.
+            const firstOnset = onsets[0] ?? 0;
+            const voStart = Math.min(onsets[i] ?? firstOnset, firstOnset);
+            const appear = interpolate(frame, [Math.max(0, firstOnset), Math.max(0, firstOnset) + 6], [0, 1], {
               extrapolateLeft: 'clamp',
               extrapolateRight: 'clamp',
             });
-            const y = interpolate(frame, [voStart, voStart + 6], [14, 0], {
+            const y = interpolate(frame, [Math.max(0, firstOnset), Math.max(0, firstOnset) + 8], [14, 0], {
               extrapolateLeft: 'clamp',
               extrapolateRight: 'clamp',
             });
+            // Per-word gold pop when that token's onset hits; stay visible after band fade-in.
+            const wordHit = interpolate(
+              frame,
+              [onsets[i] ?? firstOnset, (onsets[i] ?? firstOnset) + 4],
+              [0.85, 1],
+              {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+            );
             return (
               <span
                 key={`${token.text}-${i}`}
                 style={{
                   display: 'inline-block',
-                  marginInline: 7,
+                  marginInline: 10,
                   opacity: appear,
-                  transform: `translateY(${y}px)`,
+                  transform: `translateY(${y}px) scale(${wordHit})`,
                   color: token.gold ? brand.colors.gold : brand.colors.ivory,
                 }}
               >

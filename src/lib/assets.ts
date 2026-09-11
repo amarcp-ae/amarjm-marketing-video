@@ -48,6 +48,7 @@ export const ASSETS = {
     S12: {
       home: 'screens/S12/home.png',
       reportDialog: 'screens/S12/report-dialog.png',
+      purchaseInvoice: 'screens/S12/purchase-invoice.png',
     },
   },
   video: {
