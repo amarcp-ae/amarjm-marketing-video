@@ -1,6 +1,9 @@
 /**
- * Regenerate VO for selected scenes only.
- * Usage: npx tsx audio/regen-scenes.ts S01 S02 S06 S09 S11
+ * Regenerate VO for selected scenes (default: all S01–S13).
+ * Usage: npx tsx audio/regen-scenes.ts
+ *        npx tsx audio/regen-scenes.ts S01 S09
+ *
+ * Abdullah (usjDi9nBY6UHvtKrL4ba) — original settings, no post speed-shift.
  */
 import 'dotenv/config';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
@@ -13,20 +16,21 @@ const VO_DIR = path.join(ROOT, 'assets', 'audio', 'vo');
 const MANIFEST_PATH = path.join(ROOT, 'assets', 'audio', 'manifest.json');
 const FRAMES_PATH = path.join(ROOT, 'src', 'sceneFrames.json');
 const FPS = 30;
-/** Non-VO hold after last spoken word. */
+
 const DEFAULT_TAIL_SEC = 0.3;
 const SCENE_TAIL_SEC: Record<string, number> = {
-  S01: 1.5, // logo reveal
-  S13: 3.0, // end card
+  S01: 1.5,
+  S13: 3.0,
 };
 
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'l2PqipvTQvI6VY5pLWBt';
+/** Abdullah — Saudi Arabic Narrator */
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'usjDi9nBY6UHvtKrL4ba';
 const MODEL_ID = 'eleven_multilingual_v2';
 const VOICE_SETTINGS = {
   stability: 0.45,
-  similarity_boost: 0.9,
-  style: 0.25,
-  speed: 1.08,
+  similarity_boost: 0.8,
+  style: 0.2,
+  speed: 0.95,
 } as const;
 
 const sceneTailSec = (id: string) => SCENE_TAIL_SEC[id] ?? DEFAULT_TAIL_SEC;
@@ -110,6 +114,9 @@ function alignmentToWords(alignment: Alignment | null | undefined): WordTimestam
 }
 
 async function synthesizeScene(apiKey: string, text: string, sceneId: string) {
+  console.log(
+    `[fetch] ${sceneId} voice_id=${VOICE_ID} model=${MODEL_ID} settings=${JSON.stringify(VOICE_SETTINGS)}`,
+  );
   const res = await elFetch(
     apiKey,
     `/text-to-speech/${encodeURIComponent(VOICE_ID)}/with-timestamps`,
@@ -146,16 +153,23 @@ async function synthesizeScene(apiKey: string, text: string, sceneId: string) {
 }
 
 async function main() {
-  const wanted = (process.argv.slice(2).length
-    ? process.argv.slice(2)
-    : Array.from({length: 13}, (_, i) => `S${String(i + 1).padStart(2, '0')}`)
+  const wanted = (
+    process.argv.slice(2).length
+      ? process.argv.slice(2)
+      : Array.from({length: 13}, (_, i) => `S${String(i + 1).padStart(2, '0')}`)
   ).map((s) => {
     const n = s.replace(/^S/i, '');
     return `S${n.padStart(2, '0')}`;
   });
 
+  console.log(`=== VOICE_ID for this run: ${VOICE_ID} ===`);
+  console.log(`=== SETTINGS: ${JSON.stringify(VOICE_SETTINGS)} ===`);
+  console.log(`=== MODEL: ${MODEL_ID} ===`);
+  console.log(`=== NO post speed-shift; loudnorm metadata only ===`);
+
   const apiKey = requireApiKey();
   await mkdir(VO_DIR, {recursive: true});
+  await mkdir(path.join(ROOT, 'docs'), {recursive: true});
   const all = parseScript(await readFile(SCRIPT_PATH, 'utf8'));
   const byId = Object.fromEntries(all.map((s) => [s.scene, s]));
 
@@ -166,6 +180,8 @@ async function main() {
   } catch {
     manifest = {};
   }
+
+  const fetchLog: Array<{file: string; voice_id: string}> = [];
 
   for (const id of wanted) {
     const entry = byId[id];
@@ -182,6 +198,9 @@ async function main() {
       JSON.stringify(
         {
           scene: id,
+          voice_id: VOICE_ID,
+          model_id: MODEL_ID,
+          voice_settings: VOICE_SETTINGS,
           text: entry.text,
           durationSec: Number(durationSec.toFixed(3)),
           lastSpeechSec: Number(lastSpeechSec.toFixed(3)),
@@ -203,6 +222,7 @@ async function main() {
     const scenes = (manifest.scenes as Record<string, unknown>) ?? {};
     scenes[id] = {
       file: `vo/${id}.mp3`,
+      voice_id: VOICE_ID,
       durationSec: Number(durationSec.toFixed(3)),
       lastSpeechSec: Number(lastSpeechSec.toFixed(3)),
       holdSec: Number(holdSec.toFixed(3)),
@@ -210,20 +230,35 @@ async function main() {
       wordCount: words.length,
     };
     manifest.scenes = scenes;
+    fetchLog.push({file: `assets/audio/vo/${id}.mp3`, voice_id: VOICE_ID});
     console.log(
-      `  ${id}: speech ${lastSpeechSec.toFixed(2)}s + hold ${holdSec.toFixed(2)}s → ${durationSec.toFixed(2)}s / ${frames[id]}f (${words.length} words)`,
+      `  ${id}: voice_id=${VOICE_ID} · speech ${lastSpeechSec.toFixed(2)}s + hold ${holdSec.toFixed(2)}s → ${durationSec.toFixed(2)}s / ${frames[id]}f (${words.length} words)`,
     );
   }
 
   manifest.voice = {
-    name: 'Cloned voice (l2PqipvTQvI6VY5pLWBt)',
+    name: 'Abdullah - Saudi Arabic Narrator',
     voice_id: VOICE_ID,
     model_id: MODEL_ID,
   };
   manifest.voiceSettings = {...VOICE_SETTINGS, loudnorm: {I: -16, TP: -1.5}};
   await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
   await writeFile(FRAMES_PATH, JSON.stringify(frames, null, 2) + '\n');
-  console.log('Updated manifest + sceneFrames.json');
+  console.log('\n=== voice_id per file ===');
+  for (const row of fetchLog) {
+    console.log(`${row.file}\t${row.voice_id}`);
+  }
+  await writeFile(
+    path.join(ROOT, 'docs', 'voice-fetch-log.txt'),
+    [
+      `VOICE_ID=${VOICE_ID}`,
+      `MODEL=${MODEL_ID}`,
+      `SETTINGS=${JSON.stringify(VOICE_SETTINGS)}`,
+      '',
+      ...fetchLog.map((r) => `${r.file}\t${r.voice_id}`),
+    ].join('\n') + '\n',
+  );
+  console.log('Updated manifest + sceneFrames.json + docs/voice-fetch-log.txt');
 }
 
 main().catch((e) => {

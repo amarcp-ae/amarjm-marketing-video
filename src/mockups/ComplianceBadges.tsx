@@ -1,73 +1,36 @@
 import React from 'react';
-import {interpolate, useCurrentFrame} from 'remotion';
+import {Img, interpolate, staticFile, useCurrentFrame} from 'remotion';
 import {brand} from '../brand';
 
 const FLAGS = [
-  {
-    code: 'UAE',
-    label: 'الإمارات',
-    stripes: ['#00732F', '#FFFFFF', '#000000'],
-    hoist: '#FF0000',
-  },
-  {
-    code: 'KSA',
-    label: 'السعودية',
-    stripes: ['#006C35', '#006C35', '#006C35'],
-    hoist: null as string | null,
-    mark: true,
-  },
-  {
-    code: 'OMN',
-    label: 'عُمان',
-    stripes: ['#FFFFFF', '#DB161B', '#008000'],
-    hoist: '#DB161B',
-  },
-];
+  {code: 'ae', label: 'الإمارات', file: 'flags/ae.png'},
+  {code: 'sa', label: 'السعودية', file: 'flags/sa.png'},
+  {code: 'om', label: 'عُمان', file: 'flags/om.png'},
+] as const;
 
 const CHIPS = [
   {id: 'zatca', label: 'ZATCA'},
   {id: 'uae', label: 'UAE eInvoicing'},
   {id: 'omn', label: 'Oman eInvoicing'},
 ];
-// Overlay chips show Arabic certified mark ✓ معتمد (see chip row below).
 
-const FlagGlyph: React.FC<(typeof FLAGS)[number]> = (f) => (
+/** Official flag-icons SVGs (sa = green field + white shahada + sword, hilt right). */
+const FlagGlyph: React.FC<{file: string; code: string}> = ({file, code}) => (
   <div
     style={{
-      width: 96,
-      height: 64,
+      width: 140,
+      height: 93,
       borderRadius: 6,
       overflow: 'hidden',
       border: `1px solid ${brand.colors.gold}88`,
-      display: 'flex',
       boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
+      background: code === 'sa' ? '#006c35' : '#0a0a0a',
     }}
   >
-    {f.hoist ? (
-      <div style={{width: '28%', height: '100%', background: f.hoist}} />
-    ) : null}
-    <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-      {f.stripes.map((c, i) => (
-        <div key={`${f.code}-${i}`} style={{flex: 1, background: c, position: 'relative'}}>
-          {f.mark && i === 1 ? (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontSize: 22,
-                fontWeight: 700,
-              }}
-            >
-              ★
-            </div>
-          ) : null}
-        </div>
-      ))}
-    </div>
+    <Img
+      src={staticFile(file)}
+      style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block'}}
+    />
   </div>
 );
 
@@ -105,7 +68,7 @@ export const ComplianceBadges: React.FC = () => {
                 textAlign: 'center',
               }}
             >
-              <FlagGlyph {...f} />
+              <FlagGlyph file={f.file} code={f.code} />
               <div
                 dir="rtl"
                 style={{

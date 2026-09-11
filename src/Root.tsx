@@ -105,6 +105,15 @@ export const RemotionRoot: React.FC = () => {
           />
         );
       })}
+      <Composition
+        id="S01Debug"
+        component={S01}
+        durationInFrames={frames.S01}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={{showWordDebug: true}}
+      />
     </>
   );
 };

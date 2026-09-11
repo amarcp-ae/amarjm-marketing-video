@@ -5,18 +5,27 @@ import {LogoWordmark} from '../components/LogoWordmark';
 import {SceneShell} from '../components/SceneShell';
 import {ensureBrandFont} from '../lib/loadFont';
 import {getSceneDurationInFrames, type SceneId} from '../lib/audioManifest';
-import {findWordOnsetFrame} from '../lib/wordTiming';
+import {currentSpokenWord, findWordOnsetFrame} from '../lib/wordTiming';
 
 const SCENE_ID: SceneId = 'S01';
 export const durationInFrames = getSceneDurationInFrames(SCENE_ID);
 
+/** Spoken RTL order — all start dim; each lights only on its own word onset. */
 const ROLES = [
   {key: 'المدير', label: 'المدير الماليّ'},
   {key: 'المحاسب', label: 'المحاسب'},
-  {key: 'والمالك', label: 'المالك'},
+  {key: 'المالك', label: 'المالك'},
   {key: 'البائع', label: 'البائع'},
-  {key: 'الموز', label: 'الموزّع'},
+  {key: 'الموزّع', label: 'الموزّع'},
   {key: 'الورشة', label: 'الورشة'},
+  {key: 'المصنع', label: 'المصنع'},
+] as const;
+
+const FACTORY_CHIPS = [
+  {key: 'صياغة', label: 'صياغة'},
+  {key: 'ترصيع', label: 'ترصيع'},
+  {key: 'تلميع', label: 'تلميع'},
+  {key: 'تشطيب', label: 'تشطيب'},
 ] as const;
 
 const MODULES = [
@@ -89,10 +98,12 @@ const phaseOpacity = (frame: number, start: number, end: number, fade = 18): num
   });
 };
 
-export const S01: React.FC = () => {
+export const S01: React.FC<{showWordDebug?: boolean}> = ({showWordDebug = false}) => {
   ensureBrandFont();
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
+  const timeSec = frame / fps;
+  const spoken = showWordDebug ? currentSpokenWord(SCENE_ID, timeSec) : null;
 
   const onset = (needle: string, occurrence = 0) =>
     findWordOnsetFrame(SCENE_ID, needle, fps, occurrence) ?? 0;
@@ -119,6 +130,8 @@ export const S01: React.FC = () => {
   })();
 
   const roleOnsets = ROLES.map((r) => onset(r.key));
+  const factoryOnset = roleOnsets[6]!;
+  const chipOnsets = FACTORY_CHIPS.map((c) => onset(c.key));
   const moduleOnsets = MODULES.map((m) =>
     onset(m.key, 'occurrence' in m ? (m.occurrence as number) : 0),
   );
@@ -222,11 +235,72 @@ export const S01: React.FC = () => {
         {rolesOp > 0.01 ? (
           <div
             dir="rtl"
-            style={{position: 'absolute', top: '34%', display: 'flex', gap: 36, opacity: rolesOp}}
+            style={{
+              position: 'absolute',
+              top: '30%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 22,
+              opacity: rolesOp,
+            }}
           >
-            {ROLES.map((r, i) => (
-              <RoleIcon key={r.key} lit={frame >= roleOnsets[i]!} label={r.label} />
-            ))}
+            <div style={{display: 'flex', gap: 28}}>
+              {ROLES.map((r, i) => (
+                <RoleIcon key={r.key} lit={frame >= roleOnsets[i]!} label={r.label} />
+              ))}
+            </div>
+            {frame >= factoryOnset ? (
+              <div style={{display: 'flex', gap: 12}}>
+                {FACTORY_CHIPS.map((c, i) => {
+                  const lit = frame >= chipOnsets[i]!;
+                  return (
+                    <div
+                      key={c.key}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: 999,
+                        border: `1.5px solid ${lit ? brand.colors.gold : '#555'}`,
+                        background: lit ? `${brand.colors.gold}28` : 'rgba(255,255,255,0.04)',
+                        color: lit ? brand.colors.gold : '#777',
+                        fontSize: 20,
+                        fontWeight: 700,
+                        opacity: lit ? 1 : 0.35,
+                        boxShadow: lit ? `0 0 16px ${brand.colors.gold}55` : 'none',
+                      }}
+                    >
+                      {c.label}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {showWordDebug && spoken ? (
+          <div
+            dir="rtl"
+            style={{
+              position: 'absolute',
+              bottom: 48,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '10px 22px',
+              borderRadius: 10,
+              background: 'rgba(0,0,0,0.72)',
+              border: `1px solid ${brand.colors.gold}`,
+              color: brand.colors.gold,
+              fontSize: 28,
+              fontWeight: 700,
+              fontFamily: brand.fontFamily,
+              zIndex: 40,
+            }}
+          >
+            {spoken.word}{' '}
+            <span style={{opacity: 0.65, fontSize: 18}}>
+              @{spoken.startSec.toFixed(2)}s · f{frame}
+            </span>
           </div>
         ) : null}
 

@@ -10,6 +10,13 @@ import {
 import {brand} from '../brand';
 import {ASSETS} from '../lib/assets';
 
+const FlagImg: React.FC<{code: 'ae' | 'om' | 'sa'; size?: number}> = ({code, size = 18}) => (
+  <Img
+    src={staticFile(`flags/${code}.png`)}
+    style={{width: size * 1.5, height: size, objectFit: 'cover', borderRadius: 2}}
+  />
+);
+
 /** S05 — peninsula map, Dubai→Muscat, FX strip, reservation → transfer order. */
 export const MapReservation: React.FC = () => {
   const frame = useCurrentFrame();
@@ -221,8 +228,30 @@ export const MapReservation: React.FC = () => {
             >
               <div style={{fontSize: 12, color: '#b8b0a4', marginBottom: 4}}>{line.b}</div>
               <div style={{fontSize: 20, fontWeight: 700, color: brand.colors.ivory}}>{line.a}</div>
-              <div style={{fontSize: 11, color: brand.colors.gold, marginTop: 4}}>
-                {i === 0 ? '🇦🇪 AED' : i === 1 ? '→ 🇴🇲 OMR' : '🇴🇲 OMR'}
+              <div
+                style={{
+                  fontSize: 11,
+                  color: brand.colors.gold,
+                  marginTop: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                {i === 0 ? (
+                  <>
+                    <FlagImg code="ae" /> AED
+                  </>
+                ) : i === 1 ? (
+                  <>
+                    <FlagImg code="ae" /> → <FlagImg code="om" /> OMR
+                  </>
+                ) : (
+                  <>
+                    <FlagImg code="om" /> OMR
+                  </>
+                )}
               </div>
             </div>
           );
