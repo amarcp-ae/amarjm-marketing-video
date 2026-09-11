@@ -8,3 +8,4 @@ node_modules/
 *.log
 .remotion/
 artifacts/
+assets/video/.tmp/
