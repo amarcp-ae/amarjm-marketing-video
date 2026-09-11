@@ -33,7 +33,7 @@ export const S04: React.FC = () => {
       <KineticHeadline
         sceneId={SCENE_ID}
         tokens={[
-          {text: 'أربع', gold: true},
+          {text: 'عدّة', gold: true},
           {text: 'دول،'},
           {text: 'تقريرٌ'},
           {text: 'واحد', gold: true},

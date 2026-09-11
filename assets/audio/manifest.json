@@ -17,9 +17,9 @@
   "scenes": {
     "S01": {
       "file": "vo/S01.mp3",
-      "durationSec": 24.084,
+      "durationSec": 40.989,
       "timestampsFile": "vo/S01.timestamps.json",
-      "wordCount": 29
+      "wordCount": 65
     },
     "S02": {
       "file": "vo/S02.mp3",
@@ -60,9 +60,9 @@
     },
     "S09": {
       "file": "vo/S09.mp3",
-      "durationSec": 17.583,
+      "durationSec": 19.533,
       "timestampsFile": "vo/S09.timestamps.json",
-      "wordCount": 23
+      "wordCount": 25
     },
     "S10": {
       "file": "vo/S10.mp3",
